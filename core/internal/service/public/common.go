@@ -41,9 +41,8 @@ import (
 	"github.com/gogf/gf/v2/os/gcache"
 	"github.com/gogf/gf/v2/os/gctx"
 
-	"github.com/g0rbe/go-chattr"
-
 	"billionmail-core/internal/consts"
+	"billionmail-core/pkg/chattr"
 )
 
 // Check if it is a development environment

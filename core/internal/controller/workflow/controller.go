@@ -23,12 +23,12 @@ func (c *ControllerV1) Create(ctx context.Context, req *v1.CreateWorkflowReq) (*
 		Status:      boolToStatus(req.IsActive),
 	}
 
-	id, err := workflowService.WorkflowService().CreateWorkflow(ctx, workflowEntity)
+	id, err := workflowService.GetWorkflowService().CreateWorkflow(ctx, workflowEntity)
 	if err != nil {
 		return nil, err
 	}
 
-	createdWorkflow, err := workflowService.WorkflowService().GetWorkflow(ctx, id)
+	createdWorkflow, err := workflowService.GetWorkflowService().GetWorkflow(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -48,11 +48,11 @@ func (c *ControllerV1) Update(ctx context.Context, req *v1.UpdateWorkflowReq) (*
 		Status:      boolToStatus(req.IsActive),
 	}
 
-	if err := workflowService.WorkflowService().UpdateWorkflow(ctx, workflowEntity); err != nil {
+	if err := workflowService.GetWorkflowService().UpdateWorkflow(ctx, workflowEntity); err != nil {
 		return nil, err
 	}
 
-	updatedWorkflow, err := workflowService.WorkflowService().GetWorkflow(ctx, workflowId)
+	updatedWorkflow, err := workflowService.GetWorkflowService().GetWorkflow(ctx, workflowId)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *ControllerV1) Update(ctx context.Context, req *v1.UpdateWorkflowReq) (*
 
 func (c *ControllerV1) Get(ctx context.Context, req *v1.GetWorkflowReq) (*v1.WorkflowRes, error) {
 	workflowId := gconv.Int64(req.Id)
-	workflowEntity, err := workflowService.WorkflowService().GetWorkflow(ctx, workflowId)
+	workflowEntity, err := workflowService.GetWorkflowService().GetWorkflow(ctx, workflowId)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (c *ControllerV1) Get(ctx context.Context, req *v1.GetWorkflowReq) (*v1.Wor
 }
 
 func (c *ControllerV1) GetList(ctx context.Context, req *v1.GetWorkflowListReq) (*v1.WorkflowListRes, error) {
-	workflows, total, err := workflowService.WorkflowService().ListWorkflows(ctx, req.Page, req.Limit, req.Search, -1)
+	workflows, total, err := workflowService.GetWorkflowService().ListWorkflows(ctx, req.Page, req.Limit, req.Search, -1)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (c *ControllerV1) GetList(ctx context.Context, req *v1.GetWorkflowListReq) 
 
 func (c *ControllerV1) Delete(ctx context.Context, req *v1.DeleteWorkflowReq) (*struct{}, error) {
 	workflowId := gconv.Int64(req.Id)
-	if err := workflowService.WorkflowService().DeleteWorkflow(ctx, workflowId); err != nil {
+	if err := workflowService.GetWorkflowService().DeleteWorkflow(ctx, workflowId); err != nil {
 		return nil, err
 	}
 	return &struct{}{}, nil
@@ -101,7 +101,7 @@ func (c *ControllerV1) Delete(ctx context.Context, req *v1.DeleteWorkflowReq) (*
 
 func (c *ControllerV1) Duplicate(ctx context.Context, req *v1.DuplicateWorkflowReq) (*v1.DuplicateWorkflowRes, error) {
 	workflowId := gconv.Int64(req.Id)
-	workflowEntity, err := workflowService.WorkflowService().DuplicateWorkflow(ctx, workflowId)
+	workflowEntity, err := workflowService.GetWorkflowService().DuplicateWorkflow(ctx, workflowId)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (c *ControllerV1) Duplicate(ctx context.Context, req *v1.DuplicateWorkflowR
 
 func (c *ControllerV1) Toggle(ctx context.Context, req *v1.ToggleWorkflowReq) (*struct{}, error) {
 	workflowId := gconv.Int64(req.Id)
-	workflowEntity, err := workflowService.WorkflowService().GetWorkflow(ctx, workflowId)
+	workflowEntity, err := workflowService.GetWorkflowService().GetWorkflow(ctx, workflowId)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (c *ControllerV1) Toggle(ctx context.Context, req *v1.ToggleWorkflowReq) (*
 	}
 
 	workflowEntity.Status = 1 - workflowEntity.Status
-	if err := workflowService.WorkflowService().UpdateWorkflow(ctx, workflowEntity); err != nil {
+	if err := workflowService.GetWorkflowService().UpdateWorkflow(ctx, workflowEntity); err != nil {
 		return nil, err
 	}
 
@@ -128,7 +128,7 @@ func (c *ControllerV1) Toggle(ctx context.Context, req *v1.ToggleWorkflowReq) (*
 
 func (c *ControllerV1) GetStats(ctx context.Context, req *v1.GetWorkflowStatsReq) (*v1.WorkflowStatsRes, error) {
 	workflowId := gconv.Int64(req.Id)
-	stats, err := workflowService.WorkflowService().GetWorkflowStatistics(ctx, workflowId)
+	stats, err := workflowService.GetWorkflowService().GetWorkflowStatistics(ctx, workflowId)
 	if err != nil {
 		return nil, err
 	}

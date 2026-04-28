@@ -14,7 +14,7 @@ var (
 	workflowServiceInstance *WorkflowService
 )
 
-func WorkflowService() *WorkflowService {
+func GetWorkflowService() *WorkflowService {
 	if workflowServiceInstance == nil {
 		workflowServiceInstance = &WorkflowService{}
 	}
