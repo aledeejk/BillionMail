@@ -1,7 +1,7 @@
 package database_initialization
 
 import (
-	"billionmail-core/internal/consts"
+	//"billionmail-core/internal/consts"
 	"billionmail-core/internal/service/public"
 	"context"
 	"fmt"
@@ -25,7 +25,8 @@ func InitDatabase() (err error) {
 		"default": gdb.ConfigGroup{
 			gdb.ConfigNode{
 				// Debug: true,
-				Host:             public.AbsPath(consts.POSTGRESQL_SOCK),
+				Host:             "127.0.0.1",
+				Port:             "5433",
 				User:             "billionmail",
 				Pass:             dbPass,
 				Name:             "billionmail",

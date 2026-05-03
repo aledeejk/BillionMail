@@ -27,7 +27,7 @@ func InitRedis() (err error) {
 		}
 	}
 
-	address := "127.0.0.1:26379"
+	address := "127.0.0.1:6379"
 
 	if public.IsRunningInContainer() {
 		address = "redis:6379"

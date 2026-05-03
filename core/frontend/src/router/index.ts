@@ -32,22 +32,26 @@ router.beforeEach(async (to, from, next) => {
 		return
 	}
 
-	const userStore = useUserStore()
+	// TEMPORARY FOR DEMO - skip auth check
+	next()
+	return
 
-	// User is logged in
-	if (userStore.isLogin) {
-		// If the visited route is in the white list, jump to the home page
-		if (whitePathList.includes(to.path)) {
-			next('/')
-		} else {
-			next()
-		}
-	} else if (whitePathList.includes(to.path)) {
-		// If the visited route is in the white list, go directly
-		next()
-	} else {
-		next('/login')
-	}
+	// const userStore = useUserStore()
+
+	// // User is logged in
+	// if (userStore.isLogin) {
+	// 	// If the visited route is in the white list, jump to the home page
+	// 	if (whitePathList.includes(to.path)) {
+	// 		next('/')
+	// 	} else {
+	// 		next()
+	// 	}
+	// } else if (whitePathList.includes(to.path)) {
+	// 	// If the visited route is in the white list, go directly
+	// 	next()
+	// } else {
+	// 	next('/login')
+	// }
 })
 
 router.afterEach(() => {
