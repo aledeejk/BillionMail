@@ -12,26 +12,20 @@ import (
 
 // InitRedis initialize redis configuration
 func InitRedis() (err error) {
-	// get redis password from environment variable
-	passwd, err := public.DockerEnv("REDISPASS")
-
-	if err != nil {
-		return fmt.Errorf("redis env init error: %v", err)
-	}
+	passwd := public.MustGetDockerEnv("REDISPASS", "")
 
 	db := 1
-	dbEnv, err := public.DockerEnv("REDISDB")
-	if err == nil {
-		if dbVal, parseErr := strconv.Atoi(dbEnv); parseErr == nil {
-			db = dbVal
-		}
+	dbEnv := public.MustGetDockerEnv("REDISDB", "1")
+	if dbVal, parseErr := strconv.Atoi(dbEnv); parseErr == nil {
+		db = dbVal
 	}
 
-	address := "127.0.0.1:6379"
-
+	host := public.MustGetDockerEnv("REDIS_HOST", "127.0.0.1")
+	port := public.MustGetDockerEnv("REDIS_PORT", "26379")
 	if public.IsRunningInContainer() {
-		address = "redis:6379"
+		host = public.MustGetDockerEnv("REDIS_HOST", "redis")
 	}
+	address := fmt.Sprintf("%s:%s", host, port)
 
 	// Initialize Redis configuration
 	gredis.SetConfig(&gredis.Config{

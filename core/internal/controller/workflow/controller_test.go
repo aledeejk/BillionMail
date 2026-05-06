@@ -9,7 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"billionmail-core/api/workflow/v1"
+	v1 "billionmail-core/api/workflow/v1"
+	workflowService "billionmail-core/internal/service/workflow"
 
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
@@ -18,25 +19,25 @@ import (
 
 // Mock workflow service for testing
 type mockWorkflowService struct {
-	workflows map[int64]*Workflow
+	workflows map[int64]*workflowService.Workflow
 	nextID    int64
 }
 
 func newMockWorkflowService() *mockWorkflowService {
 	return &mockWorkflowService{
-		workflows: make(map[int64]*Workflow),
+		workflows: make(map[int64]*workflowService.Workflow),
 		nextID:    1,
 	}
 }
 
-func (m *mockWorkflowService) CreateWorkflow(ctx context.Context, workflow *Workflow) (int64, error) {
+func (m *mockWorkflowService) CreateWorkflow(ctx context.Context, workflow *workflowService.Workflow) (int64, error) {
 	workflow.Id = m.nextID
 	m.workflows[m.nextID] = workflow
 	m.nextID++
 	return workflow.Id, nil
 }
 
-func (m *mockWorkflowService) GetWorkflow(ctx context.Context, workflowId int64) (*Workflow, error) {
+func (m *mockWorkflowService) GetWorkflow(ctx context.Context, workflowId int64) (*workflowService.Workflow, error) {
 	workflow, exists := m.workflows[workflowId]
 	if !exists {
 		return nil, nil
@@ -44,8 +45,8 @@ func (m *mockWorkflowService) GetWorkflow(ctx context.Context, workflowId int64)
 	return workflow, nil
 }
 
-func (m *mockWorkflowService) ListWorkflows(ctx context.Context, page, pageSize int, keyword string, status int) ([]*Workflow, int, error) {
-	var workflows []*Workflow
+func (m *mockWorkflowService) ListWorkflows(ctx context.Context, page, pageSize int, keyword string, status int) ([]*workflowService.Workflow, int, error) {
+	var workflows []*workflowService.Workflow
 	total := 0
 
 	for _, workflow := range m.workflows {
@@ -62,7 +63,7 @@ func (m *mockWorkflowService) ListWorkflows(ctx context.Context, page, pageSize 
 	start := (page - 1) * pageSize
 	end := start + pageSize
 	if start > len(workflows) {
-		return []*Workflow{}, total, nil
+		return []*workflowService.Workflow{}, total, nil
 	}
 	if end > len(workflows) {
 		end = len(workflows)
@@ -71,7 +72,7 @@ func (m *mockWorkflowService) ListWorkflows(ctx context.Context, page, pageSize 
 	return workflows[start:end], total, nil
 }
 
-func (m *mockWorkflowService) UpdateWorkflow(ctx context.Context, workflow *Workflow) error {
+func (m *mockWorkflowService) UpdateWorkflow(ctx context.Context, workflow *workflowService.Workflow) error {
 	if _, exists := m.workflows[workflow.Id]; !exists {
 		return gerror.New("workflow not found")
 	}
@@ -93,7 +94,7 @@ func (m *mockWorkflowService) DuplicateWorkflow(ctx context.Context, workflowId 
 		return 0, gerror.New("workflow not found")
 	}
 
-	duplicate := &Workflow{
+	duplicate := &workflowService.Workflow{
 		Name:        original.Name + " (Copy)",
 		Description: original.Description,
 		Status:      0, // Disabled by default
@@ -116,8 +117,8 @@ func (m *mockWorkflowService) ToggleWorkflow(ctx context.Context, workflowId int
 	return nil
 }
 
-func (m *mockWorkflowService) GetWorkflowStatistics(ctx context.Context, workflowId int64) (*WorkflowStatistics, error) {
-	return &WorkflowStatistics{
+func (m *mockWorkflowService) GetWorkflowStatistics(ctx context.Context, workflowId int64) (*workflowService.WorkflowStatistics, error) {
+	return &workflowService.WorkflowStatistics{
 		WorkflowId:      workflowId,
 		TotalExecutions: 10,
 		SuccessCount:    8,
@@ -145,7 +146,7 @@ func TestControllerV1_Create(t *testing.T) {
 			return
 		}
 
-		workflow := &Workflow{
+		workflow := &workflowService.Workflow{
 			Name:        req.Name,
 			Description: req.Description,
 			Status:      gconv.Int(req.Status),
@@ -214,7 +215,7 @@ func TestControllerV1_Create(t *testing.T) {
 					return
 				}
 
-				workflow := &Workflow{
+				workflow := &workflowService.Workflow{
 					Name:        req.Name,
 					Description: req.Description,
 					Status:      gconv.Int(req.Status),
@@ -256,7 +257,7 @@ func TestControllerV1_Get(t *testing.T) {
 	mockService := newMockWorkflowService()
 
 	// Create a test workflow
-	testWorkflow := &Workflow{
+	testWorkflow := &workflowService.Workflow{
 		Name:        "Test Workflow",
 		Description: "Test Description",
 		Status:      1,
@@ -336,7 +337,7 @@ func TestControllerV1_List(t *testing.T) {
 
 	// Create test workflows
 	for i := 1; i <= 3; i++ {
-		workflow := &Workflow{
+		workflow := &workflowService.Workflow{
 			Name:        gconv.Stringf("Workflow %d", i),
 			Description: gconv.Stringf("Description %d", i),
 			Status:      1,
@@ -393,7 +394,7 @@ func TestControllerV1_Update(t *testing.T) {
 	mockService := newMockWorkflowService()
 
 	// Create a test workflow
-	testWorkflow := &Workflow{
+	testWorkflow := &workflowService.Workflow{
 		Name:        "Original Name",
 		Description: "Original Description",
 		Status:      1,
@@ -459,7 +460,7 @@ func TestControllerV1_Delete(t *testing.T) {
 	mockService := newMockWorkflowService()
 
 	// Create a test workflow
-	testWorkflow := &Workflow{
+	testWorkflow := &workflowService.Workflow{
 		Name:        "Test Workflow",
 		Description: "Test Description",
 		Status:      1,
@@ -496,7 +497,7 @@ func TestControllerV1_Duplicate(t *testing.T) {
 	mockService := newMockWorkflowService()
 
 	// Create a test workflow
-	testWorkflow := &Workflow{
+	testWorkflow := &workflowService.Workflow{
 		Name:        "Original Workflow",
 		Description: "Original Description",
 		Status:      1,
@@ -545,7 +546,7 @@ func TestControllerV1_Toggle(t *testing.T) {
 	mockService := newMockWorkflowService()
 
 	// Create a test workflow
-	testWorkflow := &Workflow{
+	testWorkflow := &workflowService.Workflow{
 		Name:        "Test Workflow",
 		Description: "Test Description",
 		Status:      1, // Active
@@ -583,7 +584,7 @@ func TestControllerV1_GetStats(t *testing.T) {
 	mockService := newMockWorkflowService()
 
 	// Create a test workflow
-	testWorkflow := &Workflow{
+	testWorkflow := &workflowService.Workflow{
 		Name:        "Test Workflow",
 		Description: "Test Description",
 		Status:      1,
@@ -616,7 +617,7 @@ func TestControllerV1_GetStats(t *testing.T) {
 			t.Errorf("Expected status code 200, got %d", w.Code)
 		}
 
-		var stats WorkflowStatistics
+		var stats workflowService.WorkflowStatistics
 		if err := json.NewDecoder(w.Body).Decode(&stats); err != nil {
 			t.Errorf("Failed to decode response: %v", err)
 			return

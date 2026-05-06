@@ -15,21 +15,25 @@ var registeredHandlers = make([]func(), 0, 256)
 // InitDatabase initializes the database configuration
 func InitDatabase() (err error) {
 	dbPass, err := public.DockerEnv("DBPASS")
-
 	if err != nil {
-		return fmt.Errorf("Read database password failed: %v", err)
+		dbPass = ""
 	}
+
+	host := public.MustGetDockerEnv("DBHOST", "127.0.0.1")
+	port := public.MustGetDockerEnv("DBPORT", "25432")
+	user := public.MustGetDockerEnv("DBUSER", "billionmail")
+	name := public.MustGetDockerEnv("DBNAME", "billionmail")
 
 	// Setting database configuration
 	err = gdb.SetConfig(gdb.Config{
 		"default": gdb.ConfigGroup{
 			gdb.ConfigNode{
 				// Debug: true,
-				Host:             "127.0.0.1",
-				Port:             "5433",
-				User:             "billionmail",
+				Host:             host,
+				Port:             port,
+				User:             user,
 				Pass:             dbPass,
-				Name:             "billionmail",
+				Name:             name,
 				Type:             "pgsql",
 				Role:             "master",
 				MaxOpenConnCount: 100,

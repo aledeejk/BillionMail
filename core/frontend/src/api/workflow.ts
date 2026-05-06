@@ -19,6 +19,8 @@ const mapWorkflow = (data: any): Workflow => ({
   updatedAt: data.updated_at,
 })
 
+const getResponseData = (response: any) => response?.data ?? response
+
 const mapWorkflowVersion = (data: any): WorkflowVersion => ({
   version: data.version,
   createdAt: data.created_at,
@@ -45,13 +47,13 @@ const mapWorkflowStats = (data: any): WorkflowStatistics => ({
 export const workflowApi = {
   async getWorkflows(params?: { page?: number; limit?: number; search?: string }): Promise<Workflow[]> {
     const response = await instance.get('/workflow', { params })
-    const data = response.data
+    const data = getResponseData(response)
     return (data.list || data || []).map(mapWorkflow)
   },
 
   async getWorkflow(id: string): Promise<Workflow | null> {
     const response = await instance.get(`/workflow/${id}`)
-    const data = response.data
+    const data = getResponseData(response)
     return data ? mapWorkflow(data) : null
   },
 
@@ -59,20 +61,25 @@ export const workflowApi = {
     const payload = {
       name: data.name,
       description: data.description,
-      is_active: true,  // по умолчанию активен
+      is_active: true,
+      nodes: data.nodes || [],
+      connections: data.connections || [],
     }
     const response = await instance.post('/workflow', payload)
-    return mapWorkflow(response.data)
+    const responseData = getResponseData(response)
+    return mapWorkflow(responseData)
   },
 
   async updateWorkflow(data: UpdateWorkflowRequest): Promise<Workflow> {
     const payload: Record<string, any> = {}
     if (data.name !== undefined) payload.name = data.name
     if (data.description !== undefined) payload.description = data.description
-    // isActive обрабатывается отдельно через toggle
+    if (data.nodes !== undefined) payload.nodes = data.nodes
+    if (data.connections !== undefined) payload.connections = data.connections
 
     const response = await instance.put(`/workflow/${data.id}`, payload)
-    return mapWorkflow(response.data)
+    const responseData = getResponseData(response)
+    return mapWorkflow(responseData)
   },
 
   async deleteWorkflow(id: string): Promise<void> {
@@ -88,12 +95,14 @@ export const workflowApi = {
     const response = await instance.post(`/workflow/${id}/duplicate`, {
       name: `${workflow.name} Copy`,
     })
-    return mapWorkflow(response.data.workflow || response.data)
+    const responseData = getResponseData(response)
+    return mapWorkflow(responseData.workflow || responseData)
   },
 
   async toggleWorkflow(id: string, isActive: boolean): Promise<Workflow> {
-    const response = await instance.post(`/workflow/${id}/toggle`)
-    // После toggle получаем обновлённый workflow
+    await instance.post(`/workflow/${id}/toggle`, {
+      is_active: isActive,
+    })
     const updated = await this.getWorkflow(id)
     if (!updated) {
       throw new Error('Workflow not found after toggle')
@@ -103,23 +112,25 @@ export const workflowApi = {
 
   async getWorkflowStats(request: GetWorkflowStatsRequest): Promise<WorkflowStatistics> {
     const response = await instance.get(`/workflow/${request.id}/stats`)
-    return mapWorkflowStats(response.data)
+    const responseData = getResponseData(response)
+    return mapWorkflowStats(responseData)
   },
 
   async getWorkflowVersions(id: string): Promise<WorkflowVersion[]> {
     const response = await instance.get(`/workflow/${id}/versions`)
-    const data = response.data
+    const data = getResponseData(response)
     return (data.list || data || []).map(mapWorkflowVersion)
   },
 
   async getWorkflowExecutions(workflowId: string): Promise<WorkflowExecution[]> {
     const response = await instance.get(`/workflow/${workflowId}/executions`)
-    const data = response.data
+    const data = getResponseData(response)
     return (data.list || data || []).map(mapWorkflowExecution)
   },
 
   async executeWorkflow(id: string): Promise<WorkflowExecution> {
     const response = await instance.post(`/workflow/${id}/execute`)
-    return mapWorkflowExecution(response.data)
+    const responseData = getResponseData(response)
+    return mapWorkflowExecution(responseData)
   },
 }

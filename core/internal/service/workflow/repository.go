@@ -72,15 +72,11 @@ func (r *workflowRepository) CreateWorkflow(ctx context.Context, workflow *Workf
 		data["metadata"] = string(metadata)
 	}
 
-	result, err := g.DB().Model("bm_workflows").Ctx(ctx).Data(data).Insert()
+	result, err := g.DB().Model("bm_workflows").Ctx(ctx).Data(data).InsertAndGetId()
 	if err != nil {
 		return 0, err
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	return result, nil
 }
 
 func (r *workflowRepository) UpdateWorkflow(ctx context.Context, workflow *Workflow) error {
@@ -256,15 +252,11 @@ func (r *workflowRepository) CreateWorkflowVersion(ctx context.Context, version 
 		"created_at":  version.CreatedAt,
 	}
 
-	result, err := g.DB().Model("bm_workflow_versions").Ctx(ctx).Data(data).Insert()
+	result, err := g.DB().Model("bm_workflow_versions").Ctx(ctx).Data(data).InsertAndGetId()
 	if err != nil {
 		return 0, err
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	return result, nil
 }
 
 func (r *workflowRepository) GetWorkflowVersions(ctx context.Context, workflowId int64) ([]*WorkflowVersion, error) {
@@ -300,15 +292,11 @@ func (r *workflowRepository) RecordExecution(ctx context.Context, execution *Wor
 		"updated_at":   execution.UpdatedAt,
 	}
 
-	result, err := g.DB().Model("bm_workflow_executions").Ctx(ctx).Data(data).Insert()
+	result, err := g.DB().Model("bm_workflow_executions").Ctx(ctx).Data(data).InsertAndGetId()
 	if err != nil {
 		return 0, err
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	return result, nil
 }
 
 func (r *workflowRepository) ListExecutions(ctx context.Context, workflowId int64, page, pageSize int) ([]*WorkflowExecution, int, error) {
@@ -339,15 +327,11 @@ func (r *workflowRepository) CreateLog(ctx context.Context, log *WorkflowLog) (i
 		"created_at":   log.CreatedAt,
 	}
 
-	result, err := g.DB().Model("bm_workflow_logs").Ctx(ctx).Data(data).Insert()
+	result, err := g.DB().Model("bm_workflow_logs").Ctx(ctx).Data(data).InsertAndGetId()
 	if err != nil {
 		return 0, err
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	return result, nil
 }
 
 func (r *workflowRepository) ListLogs(ctx context.Context, workflowId int64, page, pageSize int) ([]*WorkflowLog, int, error) {
