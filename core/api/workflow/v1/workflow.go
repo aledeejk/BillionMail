@@ -54,6 +54,26 @@ type GetWorkflowStatsReq struct {
 	Id     string `json:"id" v:"required"`
 }
 
+type GetWorkflowVersionsReq struct {
+	g.Meta `path:"/workflow/{id}/versions" method:"get" tags:"Workflow" summary:"Get workflow versions"`
+	Id     string `json:"id" v:"required"`
+	Page   int    `json:"page" d:"1"`
+	Limit  int    `json:"limit" d:"20"`
+}
+
+type GetWorkflowExecutionsReq struct {
+	g.Meta `path:"/workflow/{id}/executions" method:"get" tags:"Workflow" summary:"Get workflow executions"`
+	Id     string `json:"id" v:"required"`
+	Page   int    `json:"page" d:"1"`
+	Limit  int    `json:"limit" d:"20"`
+}
+
+type ExecuteWorkflowReq struct {
+	g.Meta `path:"/workflow/{id}/execute" method:"post" tags:"Workflow" summary:"Execute workflow"`
+	Id      string `json:"id" v:"required"`
+	Trigger string `json:"trigger"`
+}
+
 type DuplicateWorkflowRes struct {
 	Workflow WorkflowRes `json:"workflow"`
 }
@@ -77,4 +97,21 @@ type WorkflowStatsRes struct {
 	ActiveContacts  int     `json:"active_contacts"`
 	EmailsSent      int     `json:"emails_sent"`
 	ConversionRate  float64 `json:"conversion_rate"`
+}
+
+type WorkflowVersionRes struct {
+	Version   int       `json:"version"`
+	CreatedAt time.Time `json:"created_at"`
+	Status    int       `json:"status"`
+}
+
+type WorkflowExecutionRes struct {
+	Id           string    `json:"id"`
+	WorkflowId   string    `json:"workflow_id"`
+	Version      int       `json:"version"`
+	Status       int       `json:"status"`
+	Trigger      string    `json:"trigger"`
+	StartedAt    time.Time `json:"started_at"`
+	CompletedAt  time.Time `json:"completed_at"`
+	ErrorMessage string    `json:"error_message"`
 }

@@ -139,6 +139,41 @@ func (c *ControllerV1) GetStats(ctx context.Context, req *v1.GetWorkflowStatsReq
 	}, nil
 }
 
+func (c *ControllerV1) GetVersions(ctx context.Context, req *v1.GetWorkflowVersionsReq) ([]*v1.WorkflowVersionRes, error) {
+	workflowId := gconv.Int64(req.Id)
+	versions, err := workflowService.GetWorkflowService().GetWorkflowVersions(ctx, workflowId)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*v1.WorkflowVersionRes, 0, len(versions))
+	for _, version := range versions {
+		res = append(res, toV1WorkflowVersion(version))
+	}
+	return res, nil
+}
+
+func (c *ControllerV1) GetExecutions(ctx context.Context, req *v1.GetWorkflowExecutionsReq) ([]*v1.WorkflowExecutionRes, error) {
+	workflowId := gconv.Int64(req.Id)
+	executions, _, err := workflowService.GetWorkflowService().GetExecutionHistory(ctx, workflowId, req.Page, req.Limit)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*v1.WorkflowExecutionRes, 0, len(executions))
+	for _, execution := range executions {
+		res = append(res, toV1WorkflowExecution(execution))
+	}
+	return res, nil
+}
+
+func (c *ControllerV1) Execute(ctx context.Context, req *v1.ExecuteWorkflowReq) (*v1.WorkflowExecutionRes, error) {
+	workflowId := gconv.Int64(req.Id)
+	execution, err := workflowService.GetWorkflowService().ExecuteWorkflow(ctx, workflowId, req.Trigger)
+	if err != nil {
+		return nil, err
+	}
+	return toV1WorkflowExecution(execution), nil
+}
+
 func toV1Workflow(workflowEntity *workflowService.Workflow) *v1.WorkflowRes {
 	if workflowEntity == nil {
 		return nil
@@ -151,6 +186,33 @@ func toV1Workflow(workflowEntity *workflowService.Workflow) *v1.WorkflowRes {
 		Version:     workflowEntity.Version,
 		CreatedAt:   time.Unix(workflowEntity.CreatedAt, 0),
 		UpdatedAt:   time.Unix(workflowEntity.UpdatedAt, 0),
+	}
+}
+
+func toV1WorkflowVersion(version *workflowService.WorkflowVersion) *v1.WorkflowVersionRes {
+	if version == nil {
+		return nil
+	}
+	return &v1.WorkflowVersionRes{
+		Version:   version.Version,
+		CreatedAt: time.Unix(version.CreatedAt, 0),
+		Status:    version.Status,
+	}
+}
+
+func toV1WorkflowExecution(execution *workflowService.WorkflowExecution) *v1.WorkflowExecutionRes {
+	if execution == nil {
+		return nil
+	}
+	return &v1.WorkflowExecutionRes{
+		Id:           gconv.String(execution.Id),
+		WorkflowId:   gconv.String(execution.WorkflowId),
+		Version:      execution.Version,
+		Status:       execution.Status,
+		Trigger:      execution.Trigger,
+		StartedAt:    time.Unix(execution.StartedAt, 0),
+		CompletedAt:  time.Unix(execution.CompletedAt, 0),
+		ErrorMessage: execution.Error,
 	}
 }
 

@@ -57,6 +57,15 @@
           <button class="btn-sm btn-secondary" @click="viewVersions(workflow.id)">
             📜 Versions
           </button>
+          <button class="btn-sm btn-secondary" @click="viewDiagram(workflow)">
+            🧩 View Flow
+          </button>
+          <button class="btn-sm btn-secondary" @click="$router.push(`/workflow-editor/${workflow.id}`)">
+            🔧 Edit Flow
+          </button>
+          <button class="btn-sm btn-secondary" @click="editWorkflow(workflow)">
+            ✏️ Edit
+          </button>
           <button
             class="btn-sm btn-secondary"
             @click="toggleWorkflow(workflow.id, !workflow.isActive)"
@@ -134,15 +143,54 @@
       </div>
     </div>
 
+    <!-- Diagram Modal -->
+    <div v-if="showDiagramModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Workflow Diagram</h2>
+          <button class="close-btn" @click="showDiagramModal = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="diagram-header">Example flow for {{ selectedDiagram?.name || 'this workflow' }}</p>
+          <div class="diagram-row">
+            <div class="diagram-item">
+              <strong>Trigger</strong>
+              <p>Start event</p>
+            </div>
+            <div class="diagram-connector">→</div>
+            <div class="diagram-item">
+              <strong>Send Email</strong>
+              <p>Deliver message</p>
+            </div>
+            <div class="diagram-connector">→</div>
+            <div class="diagram-item">
+              <strong>Delay</strong>
+              <p>Pause before next step</p>
+            </div>
+            <div class="diagram-connector">→</div>
+            <div class="diagram-item">
+              <strong>Condition</strong>
+              <p>Check recipient response</p>
+            </div>
+            <div class="diagram-connector">→</div>
+            <div class="diagram-item">
+              <strong>Action</strong>
+              <p>Run next task</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Create/Edit Dialog -->
     <div v-if="showCreateDialog" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Create New Workflow</h2>
-          <button class="close-btn" @click="showCreateDialog = false">✕</button>
+          <h2>{{ isEditMode ? 'Edit Workflow' : 'Create New Workflow' }}</h2>
+          <button class="close-btn" @click="closeCreateDialog">✕</button>
         </div>
         <div class="modal-body">
-          <form @submit.prevent="createWorkflow">
+          <form @submit.prevent="isEditMode ? updateWorkflow() : createWorkflow()">
             <div class="form-group">
               <label>Workflow Name</label>
               <input
@@ -161,10 +209,10 @@
               ></textarea>
             </div>
             <div class="form-actions">
-              <button type="button" class="btn-secondary" @click="showCreateDialog = false">
+              <button type="button" class="btn-secondary" @click="closeCreateDialog">
                 Cancel
               </button>
-              <button type="submit" class="btn-primary">Create Workflow</button>
+              <button type="submit" class="btn-primary">{{ isEditMode ? 'Update Workflow' : 'Create Workflow' }}</button>
             </div>
           </form>
         </div>
@@ -187,10 +235,14 @@ const tabs = ref(['All', 'Active', 'Inactive']);
 const showCreateDialog = ref(false);
 const showStatsModal = ref(false);
 const showVersionsModal = ref(false);
+const showDiagramModal = ref(false);
+const isEditMode = ref(false);
+const selectedWorkflowForEdit = ref<Workflow | null>(null);
 
 const selectedStats = ref<WorkflowStatistics | null>(null);
 const selectedVersions = ref<WorkflowVersion[]>([]);
 const selectedWorkflowId = ref<string>('');
+const selectedDiagram = ref<Workflow | null>(null);
 
 const formData = ref({
   name: '',
@@ -219,6 +271,23 @@ const loadWorkflows = async () => {
   }
 };
 
+const editWorkflow = (workflow: Workflow) => {
+  isEditMode.value = true;
+  selectedWorkflowForEdit.value = workflow;
+  formData.value = {
+    name: workflow.name,
+    description: workflow.description,
+  };
+  showCreateDialog.value = true;
+};
+
+const closeCreateDialog = () => {
+  showCreateDialog.value = false;
+  isEditMode.value = false;
+  selectedWorkflowForEdit.value = null;
+  formData.value = { name: '', description: '' };
+};
+
 const createWorkflow = async () => {
   try {
     const newWorkflow = await workflowApi.createWorkflow({
@@ -228,10 +297,26 @@ const createWorkflow = async () => {
       connections: [],
     });
     workflows.value.push(newWorkflow);
-    formData.value = { name: '', description: '' };
-    showCreateDialog.value = false;
+    closeCreateDialog();
   } catch (error) {
     console.error('Failed to create workflow:', error);
+  }
+};
+
+const updateWorkflow = async () => {
+  if (!selectedWorkflowForEdit.value) return;
+  try {
+    const updated = await workflowApi.updateWorkflow({
+      id: selectedWorkflowForEdit.value.id,
+      name: formData.value.name,
+      description: formData.value.description,
+    });
+    workflows.value = workflows.value.map(w => 
+      w.id === updated.id ? updated : w
+    );
+    closeCreateDialog();
+  } catch (error) {
+    console.error('Failed to update workflow:', error);
   }
 };
 
@@ -246,12 +331,14 @@ const deleteWorkflow = async (id: string) => {
 };
 
 const toggleWorkflow = async (id: string, isActive: boolean) => {
+  console.log('[UI Toggle] Toggling workflow', id, 'to active:', isActive)
   try {
     const updated = await workflowApi.toggleWorkflow(id, isActive);
-    const index = workflows.value.findIndex((w) => w.id === id);
-    if (index !== -1) {
-      workflows.value[index] = updated;
-    }
+    console.log('[UI Toggle] Received updated workflow:', updated)
+    // Update the workflow in the array using map to ensure reactivity
+    workflows.value = workflows.value.map(w => 
+      w.id === id ? updated : w
+    )
   } catch (error) {
     console.error('Failed to toggle workflow:', error);
   }
@@ -283,6 +370,11 @@ const viewVersions = async (id: string) => {
   } catch (error) {
     console.error('Failed to load versions:', error);
   }
+};
+
+const viewDiagram = (workflow: Workflow) => {
+  selectedDiagram.value = workflow;
+  showDiagramModal.value = true;
 };
 
 const rollbackWorkflow = async (id: string, version: number) => {
@@ -702,5 +794,49 @@ onMounted(() => {
 .version-status.archived {
   background: #f8d7da;
   color: #721c24;
+}
+
+.diagram-header {
+  margin-bottom: 1rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.diagram-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.diagram-item {
+  min-width: 120px;
+  flex: 1;
+  padding: 1rem;
+  background: #f7fbff;
+  border: 1px solid #dbeafe;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.diagram-item strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.diagram-item p {
+  margin: 0;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.diagram-connector {
+  font-size: 2rem;
+  color: #007bff;
+  min-width: 36px;
+  text-align: center;
 }
 </style>

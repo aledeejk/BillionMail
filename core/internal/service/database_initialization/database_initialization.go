@@ -2,7 +2,7 @@ package database_initialization
 
 import (
 	//"billionmail-core/internal/consts"
-	"billionmail-core/internal/service/public"
+	//"billionmail-core/internal/service/public"
 	"context"
 	"fmt"
 	"github.com/gogf/gf/v2/database/gdb"
@@ -14,15 +14,25 @@ var registeredHandlers = make([]func(), 0, 256)
 
 // InitDatabase initializes the database configuration
 func InitDatabase() (err error) {
-	dbPass, err := public.DockerEnv("DBPASS")
-	if err != nil {
-		dbPass = ""
-	}
 
-	host := public.MustGetDockerEnv("DBHOST", "127.0.0.1")
-	port := public.MustGetDockerEnv("DBPORT", "25432")
-	user := public.MustGetDockerEnv("DBUSER", "billionmail")
-	name := public.MustGetDockerEnv("DBNAME", "billionmail")
+	//dbPass, err := public.DockerEnv("DBPASS")
+	//if err != nil {
+	//	dbPass = ""
+	//}
+
+	 // Временно, для теста — прямое указание параметров
+    host := "127.0.0.1"
+    port := "25432"
+    user := "billionmail"
+    name := "billionmail"
+    dbPass := "billionmail123"
+
+    // Распечатаем для проверки
+    fmt.Println("=== DB CONNECTION DEBUG ===")
+    fmt.Println("Host:", host)
+    fmt.Println("Port:", port)
+    fmt.Println("User:", user)
+    fmt.Println("Name:", name)
 
 	// Setting database configuration
 	err = gdb.SetConfig(gdb.Config{

@@ -106,6 +106,7 @@ const iconMap: Record<string, VNodeChild> = {
 	overview: <i class="i-mdi-web"></i>,
 	market: <i class="i-mdi-email-fast-outline"></i>,
 	api: <i class="i-mdi-chart-line"></i>,
+	automation: <i class="i-mdi-playlist-check"></i>,
 	contacts: <i class="i-mdi-user-multiple-outline"></i>,
 	domain: <i class="i-mdi-web"></i>,
 	mailbox: <i class="i-custom:mailbox"></i>,

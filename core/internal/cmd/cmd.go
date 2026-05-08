@@ -30,7 +30,7 @@ import (
 	"billionmail-core/internal/service/phpfpm"
 	"billionmail-core/internal/service/public"
 	rbac2 "billionmail-core/internal/service/rbac"
-	"billionmail-core/internal/service/redis_initialization"
+	//"billionmail-core/internal/service/redis_initialization"
 	"billionmail-core/internal/service/rspamd"
 	"billionmail-core/internal/service/timers"
 	"context"
@@ -69,12 +69,12 @@ var (
 			}
 
 			// Init Redis
-			err = redis_initialization.InitRedis()
+			//err = redis_initialization.InitRedis()
 
-			if err != nil {
-				g.Log().Error(ctx, "initialize redis failed ", err)
-				return err
-			}
+			//if err != nil {
+			//	g.Log().Error(ctx, "initialize redis failed ", err)
+			//	return err
+			//}
 
 			// get safe path
 			safepath, _ := public.DockerEnv("SafePath")

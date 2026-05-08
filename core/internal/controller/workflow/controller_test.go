@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/net/ghttp"
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
@@ -131,12 +133,6 @@ func (m *mockWorkflowService) GetWorkflowStatistics(ctx context.Context, workflo
 func TestControllerV1_Create(t *testing.T) {
 	mockService := newMockWorkflowService()
 
-	// Replace the service with mock
-	originalService := service.WorkflowService()
-	defer func() {
-		// Restore original service (this is a simplified approach)
-	}()
-
 	// Create test server
 	s := g.Server()
 	s.BindHandler("/api/v1/workflow", func(r *ghttp.Request) {
@@ -149,8 +145,7 @@ func TestControllerV1_Create(t *testing.T) {
 		workflow := &workflowService.Workflow{
 			Name:        req.Name,
 			Description: req.Description,
-			Status:      gconv.Int(req.Status),
-			Trigger:     req.Trigger,
+			Status:      gconv.Int(req.IsActive),
 		}
 
 		id, err := mockService.CreateWorkflow(r.Context(), workflow)
@@ -178,8 +173,7 @@ func TestControllerV1_Create(t *testing.T) {
 			requestBody: v1.CreateWorkflowReq{
 				Name:        "Test Workflow",
 				Description: "Test Description",
-				Status:      1,
-				Trigger:     "contact_created",
+				IsActive:    true,
 			},
 			expectedCode: 200,
 			expectError:  false,
@@ -189,8 +183,7 @@ func TestControllerV1_Create(t *testing.T) {
 			requestBody: v1.CreateWorkflowReq{
 				Name:        "",
 				Description: "Test Description",
-				Status:      1,
-				Trigger:     "contact_created",
+				IsActive:    true,
 			},
 			expectedCode: 200,
 			expectError:  false,
@@ -218,8 +211,7 @@ func TestControllerV1_Create(t *testing.T) {
 				workflow := &workflowService.Workflow{
 					Name:        req.Name,
 					Description: req.Description,
-					Status:      gconv.Int(req.Status),
-					Trigger:     req.Trigger,
+					Status:      gconv.Int(req.IsActive),
 				}
 
 				id, err := mockService.CreateWorkflow(context.Background(), workflow)
@@ -280,7 +272,7 @@ func TestControllerV1_Get(t *testing.T) {
 		{
 			name:         "Get non-existing workflow",
 			workflowId:   "999",
-			expectedCode: 200,
+			expectedCode: 404,
 			expectError:  true,
 		},
 		{
@@ -338,8 +330,8 @@ func TestControllerV1_List(t *testing.T) {
 	// Create test workflows
 	for i := 1; i <= 3; i++ {
 		workflow := &workflowService.Workflow{
-			Name:        gconv.Stringf("Workflow %d", i),
-			Description: gconv.Stringf("Description %d", i),
+			Name:        fmt.Sprintf("Workflow %d", i),
+			Description: fmt.Sprintf("Description %d", i),
 			Status:      1,
 			Trigger:     "contact_created",
 		}
@@ -407,8 +399,7 @@ func TestControllerV1_Update(t *testing.T) {
 			Id:          gconv.String(id),
 			Name:        "Updated Name",
 			Description: "Updated Description",
-			Status:      0,
-			Trigger:     "contact_updated",
+			IsActive:    false,
 		}
 
 		body, _ := json.Marshal(updateReq)
@@ -436,8 +427,7 @@ func TestControllerV1_Update(t *testing.T) {
 
 			existing.Name = req.Name
 			existing.Description = req.Description
-			existing.Status = gconv.Int(req.Status)
-			existing.Trigger = req.Trigger
+			existing.Status = gconv.Int(req.IsActive)
 
 			err = mockService.UpdateWorkflow(context.Background(), existing)
 			if err != nil {

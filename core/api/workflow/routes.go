@@ -9,14 +9,18 @@ import (
 func RegisterRoutes(router *ghttp.RouterGroup) {
 	router.Group("/workflow", func(group *ghttp.RouterGroup) {
 		// Workflow endpoints
-		// POST /api/workflow
-		// GET /api/workflow
-		// GET /api/workflow/{id}
-		// PUT /api/workflow/{id}
+		// POST   /api/workflow
+		// GET    /api/workflow
+		// GET    /api/workflow/{id}
+		// PUT    /api/workflow/{id}
 		// DELETE /api/workflow/{id}
-		// POST /api/workflow/{id}/duplicate
-		// POST /api/workflow/{id}/toggle
-		// GET /api/workflow/{id}/stats
+		// POST   /api/workflow/{id}/duplicate
+		// POST   /api/workflow/{id}/toggle
+		// POST   /api/workflow/{id}/execute
+		// GET    /api/workflow/{id}/stats
+		// GET    /api/workflow/{id}/versions
+		// GET    /api/workflow/{id}/executions
 		group.Bind(workflowController.NewV1())
+		group.Bind(workflowController.NewEditorV1())
 	})
 }
