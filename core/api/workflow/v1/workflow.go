@@ -99,6 +99,51 @@ type WorkflowStatsRes struct {
 	ConversionRate  float64 `json:"conversion_rate"`
 }
 
+// Editor API types
+type GetWorkflowEditorReq struct {
+	g.Meta `path:"/workflow/{id}/editor" method:"get" tags:"Workflow" summary:"Get workflow editor data"`
+	Id     string `json:"id" in:"path" v:"required" dc:"Workflow ID"`
+}
+
+type GetWorkflowEditorRes struct {
+	Workflow    *WorkflowItem         `json:"workflow"`
+	Nodes       []*WorkflowNodeItem   `json:"nodes"`
+	Connections []*WorkflowConnection `json:"connections"`
+}
+
+type UpdateWorkflowEditorReq struct {
+	g.Meta      `path:"/workflow/{id}/editor" method:"put" tags:"Workflow" summary:"Update workflow editor data"`
+	Id          string                  `json:"id" in:"path" v:"required" dc:"Workflow ID"`
+	Nodes       []*WorkflowNodeItem    `json:"nodes"`
+	Connections []*WorkflowConnection  `json:"connections"`
+}
+
+type UpdateWorkflowEditorRes struct{}
+
+type WorkflowItem struct {
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IsActive    bool   `json:"is_active"`
+	Version     int    `json:"version"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type WorkflowNodeItem struct {
+	Id        string                 `json:"id" dc:"Node ID"`
+	Type      string                 `json:"type" dc:"Node type"`
+	Config    map[string]interface{} `json:"config" dc:"Node configuration"`
+	PositionX float64                `json:"position_x" dc:"X position"`
+	PositionY float64                `json:"position_y" dc:"Y position"`
+}
+
+type WorkflowConnection struct {
+	Id     string `json:"id" dc:"Connection ID"`
+	Source string `json:"source" dc:"Source node ID"`
+	Target string `json:"target" dc:"Target node ID"`
+}
+
 type WorkflowVersionRes struct {
 	Version   int       `json:"version"`
 	CreatedAt time.Time `json:"created_at"`

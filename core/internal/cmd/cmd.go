@@ -264,6 +264,7 @@ var (
 					askai.NewV1(),
 					tags.NewV1(),
 					workflow.NewV1(),
+					workflow.NewEditorV1(),
 				)
 			})
 

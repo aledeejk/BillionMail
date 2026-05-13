@@ -1,0 +1,42 @@
+=== DB CONNECTION DEBUG ===
+Host: 127.0.0.1
+Port: 25432
+User: billionmail
+Name: billionmail
+2026-05-13T18:14:28 [ERRO] Failed to cleanup duplicates or create unique index: element of parameter "pointer" for function Scan should type of struct/*struct/[]struct/[]*struct 
+Stack:
+1.  billionmail-core/internal/service/database_initialization.init.9.func1
+    D:/mechmat/computer networks/BillionMail/core/internal/service/database_initialization/smtp_relay.go:72
+2.  billionmail-core/internal/service/database_initialization.InitDatabase
+    D:/mechmat/computer networks/BillionMail/core/internal/service/database_initialization/database_initialization.go:82
+3.  billionmail-core/internal/cmd.init.func1
+    D:/mechmat/computer networks/BillionMail/core/internal/cmd/cmd.go:64
+4.  main.main
+    D:/mechmat/computer networks/BillionMail/core/main.go:13
+
+2026-05-13T18:14:28 [WARN] {944805e6d328af18358bec5bd7082863} rspamd init failed  container with name rspamd-billionmail not found
+2026-05-13T18:14:28.967+03:00 [DEBU] SetServerRoot path: D:\mechmat\computer networks\BillionMail\core\public\dist
+2026-05-13T18:14:29.013+03:00 [INFO] pid[28148]: http server started listening on [:80]
+2026-05-13T18:14:29.015+03:00 [INFO] openapi specification is disabled
+2026-05-13T18:14:29.015+03:00 [INFO] pid[28148]: https server started listening on [:443]
+2026-05-13T18:14:29 [WARN] {944805e6d328af18358bec5bd7082863} RepairDKIMSigningConfig failed:  failed to change DKIM file permissions: GetFileAttributesEx D:\mechmat\computer networks\BillionMail\rspamd-data\dkim: The system cannot find the path specified.
+2026-05-13T18:14:29 [WARN] {944805e6d328af18358bec5bd7082863} Initialize the quota plugin and update the quota usage status of the domain name and email,  failed:  HostWorkDir not set
+2026-05-13T18:14:29 [ERRO] MallogEventHandler: error adding file watcher "D:\mechmat\computer networks\BillionMail\logs\postfix" does not exist 
+Stack:
+1.  billionmail-core/internal/service/maillog_stat.(*MallogEventHandler).Start
+    D:/mechmat/computer networks/BillionMail/core/internal/service/maillog_stat/maillog_stat.go:821
+2.  billionmail-core/internal/service/timers.Start.func4
+    D:/mechmat/computer networks/BillionMail/core/internal/service/timers/timers.go:63
+3.  github.com/gogf/gf/os/gtimer.(*Entry).Run.func1
+    C:/Users/alexa/go/pkg/mod/github.com/gogf/gf@v1.16.9/os/gtimer/gtimer_entry.go:57
+
+2026-05-13T18:14:31 [WARN] AccessLogDetection: /restart_fail2ban.sh script does not exist, skipping restart
+2026-05-13T18:14:31 [ERRO] {944805e6d328af18358bec5bd7082863} Failed to sync relay configurations on first sync:  Failed to execute command: container with name postfix-billionmail not found, Command: postmap /etc/postfix/conf/sender_relay_maps_primary 
+Stack:
+1.  billionmail-core/internal/service/relay.CheckRelayFirstSync
+    D:/mechmat/computer networks/BillionMail/core/internal/service/relay/config_sync.go:273
+2.  billionmail-core/internal/service/timers.Start.func20
+    D:/mechmat/computer networks/BillionMail/core/internal/service/timers/timers.go:148
+3.  github.com/gogf/gf/os/gtimer.(*Entry).Run.func1
+    C:/Users/alexa/go/pkg/mod/github.com/gogf/gf@v1.16.9/os/gtimer/gtimer_entry.go:57
+

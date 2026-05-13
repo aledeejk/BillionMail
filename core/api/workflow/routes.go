@@ -8,6 +8,8 @@ import (
 
 func RegisterRoutes(router *ghttp.RouterGroup) {
 	router.Group("/workflow", func(group *ghttp.RouterGroup) {
+		workflowEditorController := workflowController.NewEditorV1()
+
 		// Workflow endpoints
 		// POST   /api/workflow
 		// GET    /api/workflow
@@ -21,6 +23,8 @@ func RegisterRoutes(router *ghttp.RouterGroup) {
 		// GET    /api/workflow/{id}/versions
 		// GET    /api/workflow/{id}/executions
 		group.Bind(workflowController.NewV1())
-		group.Bind(workflowController.NewEditorV1())
+		group.Bind(workflowEditorController)
+		group.GET("/:id/editor", workflowEditorController.GetEditor)
+		group.PUT("/:id/editor", workflowEditorController.UpdateEditor)
 	})
 }

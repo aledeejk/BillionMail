@@ -1,10 +1,11 @@
 <template>
   <div class="workflow-editor">
     <div class="editor-header">
+      <button @click="router.back()" class="btn-secondary">← Back</button>
       <h1>Workflow Editor: {{ workflow?.name }}</h1>
-      <div class="actions">
-        <button @click="$router.back()" class="btn-secondary">Back</button>
-        <button @click="saveWorkflow" class="btn-primary">Save</button>
+      <div class="toolbar-buttons">
+        <button type="button" @click="clearCanvas" class="btn-danger">Clear All</button>
+        <button type="button" @click="saveWorkflow()" class="btn-primary">Save</button>
       </div>
     </div>
 
@@ -12,25 +13,36 @@
       <!-- Node Palette -->
       <div class="node-palette">
         <h3>Available Nodes</h3>
-        <div class="node-item" draggable @dragstart="onDragStart($event, 'trigger')">
+        <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'trigger')">
           <strong>Trigger</strong>
           <p>Start event</p>
         </div>
-        <div class="node-item" draggable @dragstart="onDragStart($event, 'send-email')">
+        <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'send-email')">
           <strong>Send Email</strong>
           <p>Deliver message</p>
         </div>
-        <div class="node-item" draggable @dragstart="onDragStart($event, 'delay')">
+        <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'delay')">
           <strong>Delay</strong>
           <p>Pause execution</p>
         </div>
-        <div class="node-item" draggable @dragstart="onDragStart($event, 'condition')">
+        <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'condition')">
           <strong>Condition</strong>
           <p>Check condition</p>
         </div>
-        <div class="node-item" draggable @dragstart="onDragStart($event, 'action')">
+        <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'action')">
           <strong>Action</strong>
           <p>Run action</p>
+        </div>
+
+        <div class="help-box">
+          <h4>How the workflow works</h4>
+          <ul>
+            <li>Workflow starts from Trigger node.</li>
+            <li>Follows arrows to next nodes.</li>
+            <li>Delay waits specified time.</li>
+            <li>Condition checks data and branches.</li>
+            <li>Action modifies contact tags/groups.</li>
+          </ul>
         </div>
       </div>
 
@@ -42,6 +54,7 @@
           @drop="onDrop"
           @dragover="onDragOver"
           @connect="onConnect"
+          @node-click="onNodeClick"
           :fit-view-on-init="true"
           :nodes-draggable="true"
           :nodes-connectable="true"
@@ -57,9 +70,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { VueFlow, Background, Controls, MiniMap } from '@vue-flow/core'
+import { VueFlow } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
+import { Controls } from '@vue-flow/controls'
+import { MiniMap } from '@vue-flow/minimap'
 import '@vue-flow/core/dist/style.css'
 import type { Node, Edge } from '@vue-flow/core'
 import { workflowApi } from '@/api/workflow'
@@ -72,32 +88,130 @@ const workflow = ref<Workflow | null>(null)
 const nodes = ref<Node[]>([])
 const edges = ref<Edge[]>([])
 const draggedType = ref<string>('')
+const selectedNodeId = ref<string | null>(null)
 
-const loadWorkflow = async () => {
+const loadWorkflowData = async () => {
   const id = route.params.id as string
+
   try {
-    workflow.value = await workflowApi.getWorkflow(id)
-    if (workflow.value) {
-      // Load nodes and edges from workflow
-      nodes.value = workflow.value.nodes?.map((node: any) => ({
-        id: node.id,
-        type: 'default',
-        position: { x: node.position?.x || node.position_x || 0, y: node.position?.y || node.position_y || 0 },
-        data: { label: node.type },
-      })) || []
-      edges.value = workflow.value.connections?.map((conn: any) => ({
-        id: conn.id,
-        source: conn.source,
-        target: conn.target,
-      })) || []
-    }
+    const response = await workflowApi.getWorkflowEditor(id)
+    const data = response.workflow ? response : response.data || response
+
+    workflow.value = data.workflow
+    nodes.value = (data.nodes || []).map((n: any) => ({
+      id: n.id,
+      type: 'default',
+      position: { x: n.position_x || 0, y: n.position_y || 0 },
+      data: {
+        label: n.type,
+        nodeType: n.type,
+        config: n.config || {},
+      },
+    }))
+    edges.value = (data.connections || []).map((c: any) => ({
+      id: c.id,
+      source: c.source,
+      target: c.target,
+    }))
   } catch (error) {
-    console.error('Failed to load workflow:', error)
+    console.error('Failed to load workflow editor data:', error)
+    alert('Failed to load workflow editor data')
+  }
+}
+
+const getNodeLabel = (type: string) => {
+  switch (type) {
+    case 'trigger':
+      return 'Trigger'
+    case 'send-email':
+      return 'Send Email'
+    case 'delay':
+      return 'Delay'
+    case 'condition':
+      return 'Condition'
+    case 'action':
+      return 'Action'
+    default:
+      return type
+  }
+}
+
+const createNodeData = (nodeType: string) => {
+  const defaultConfig: any = {
+    trigger: { event: 'subscribe' },
+    'send-email': { template: '' },
+    delay: { duration: 1, unit: 'days' },
+    condition: { operator: 'equals', value: '' },
+    action: { actionType: 'add-tag', tag: '' },
+  }
+
+  return {
+    label: getNodeLabel(nodeType),
+    nodeType,
+    config: defaultConfig[nodeType] || {},
+  }
+}
+
+const loadDefaultNode = (nodeType: string, position: { x: number; y: number }) => {
+  return {
+    id: `${nodeType}-${Date.now()}`,
+    type: 'default',
+    position,
+    data: createNodeData(nodeType),
+  }
+}
+
+const openNodeConfig = (node: Node) => {
+  const type = node.data?.nodeType || node.type
+  const config = { ...(node.data?.config || {}) }
+  let label = getNodeLabel(type)
+
+  if (type === 'delay') {
+    const duration = prompt('Delay duration in days:', String(config.duration || 1))
+    if (duration !== null) {
+      config.duration = Number(duration) || 1
+      config.unit = 'days'
+      label = `Delay ${config.duration} ${config.unit}`
+    }
+  } else if (type === 'condition') {
+    const condition = prompt('Condition expression:', config.condition || 'email_opened == true')
+    if (condition !== null) {
+      config.condition = condition
+      label = `Condition: ${condition}`
+    }
+  } else if (type === 'action') {
+    const action = prompt('Action (for example, add_tag:VIP):', config.action || 'add_tag:VIP')
+    if (action !== null) {
+      config.action = action
+      label = `Action: ${action}`
+    }
+  } else if (type === 'send-email') {
+    const template = prompt('Email template ID:', config.templateId || '')
+    if (template !== null) {
+      config.templateId = template
+      label = template ? `Send Email: ${template}` : label
+    }
+  } else if (type === 'trigger') {
+    const triggerType = prompt('Trigger type (group_subscription / date / event):', config.triggerType || 'group_subscription')
+    if (triggerType !== null) {
+      config.triggerType = triggerType
+      label = `Trigger: ${triggerType}`
+    }
+  }
+
+  node.data = {
+    ...node.data,
+    config,
+    label,
   }
 }
 
 const onDragStart = (event: DragEvent, type: string) => {
   draggedType.value = type
+  if (event.dataTransfer) {
+    event.dataTransfer.setData('application/json', JSON.stringify({ type }))
+    event.dataTransfer.effectAllowed = 'move'
+  }
 }
 
 const onDragOver = (event: DragEvent) => {
@@ -106,17 +220,37 @@ const onDragOver = (event: DragEvent) => {
 
 const onDrop = (event: DragEvent) => {
   event.preventDefault()
+  const payload = event.dataTransfer?.getData('application/json')
+  let nodeType = draggedType.value || 'trigger'
+
+  if (payload) {
+    try {
+      const data = JSON.parse(payload)
+      nodeType = data.type || nodeType
+    } catch {
+      // ignore malformed data
+    }
+  }
+
+  const target = event.currentTarget as HTMLElement
+  const bounds = target.getBoundingClientRect()
   const position = {
-    x: event.offsetX,
-    y: event.offsetY,
+    x: event.clientX - bounds.left,
+    y: event.clientY - bounds.top,
   }
-  const newNode: Node = {
-    id: `${draggedType.value}-${Date.now()}`,
-    type: 'default',
-    position,
-    data: { label: draggedType.value },
-  }
+
+  const newNode: Node = loadDefaultNode(nodeType, position)
   nodes.value.push(newNode)
+  openNodeConfig(newNode)
+}
+
+const onNodeClick = (event: any) => {
+  const clickedNode = event.node || event
+  const node = nodes.value.find((n: any) => n.id === clickedNode.id)
+  if (!node) return
+
+  selectedNodeId.value = node.id
+  openNodeConfig(node)
 }
 
 const onConnect = (params: any) => {
@@ -128,33 +262,84 @@ const onConnect = (params: any) => {
   edges.value.push(newEdge)
 }
 
+const deleteSelected = () => {
+  const selectedNodes = nodes.value.filter(n => (n as any).selected)
+  const selectedEdges = edges.value.filter(e => (e as any).selected)
+  const selectedNodeIds = new Set(selectedNodes.map(n => n.id))
+  const selectedEdgeIds = new Set(selectedEdges.map(e => e.id))
+
+  nodes.value = nodes.value.filter(n => !selectedNodeIds.has(n.id))
+  edges.value = edges.value.filter(
+    e => !selectedEdgeIds.has(e.id)
+      && !selectedNodeIds.has(e.source)
+      && !selectedNodeIds.has(e.target),
+  )
+}
+
+const onKeyDown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement | null
+  const isEditingText = target?.tagName === 'INPUT'
+    || target?.tagName === 'TEXTAREA'
+    || target?.isContentEditable
+
+  if (isEditingText) return
+
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    const selectedNodes = nodes.value.filter(n => (n as any).selected)
+    const selectedEdges = edges.value.filter(e => (e as any).selected)
+
+    if (selectedNodes.length === 0 && selectedEdges.length === 0) return
+
+    deleteSelected()
+    event.preventDefault()
+  }
+}
+
+const clearCanvas = () => {
+  if (confirm('Remove all nodes and edges? This cannot be undone.')) {
+    nodes.value = []
+    edges.value = []
+  }
+}
+
 const saveWorkflow = async () => {
-  if (!workflow.value) return
+  if (!workflow.value) {
+    alert('No workflow loaded')
+    return
+  }
+
+  const payload = {
+    nodes: nodes.value.map((n: any) => ({
+      id: n.id,
+      type: n.data.nodeType || n.type,
+      config: n.data.config || {},
+      position_x: n.position.x,
+      position_y: n.position.y,
+    })),
+    connections: edges.value.map((e: any) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+    })),
+  }
+
   try {
-    const updatedNodes = nodes.value.map(node => ({
-      id: node.id,
-      type: node.data.label,
-      position_x: node.position.x,
-      position_y: node.position.y,
-    }))
-    const updatedConnections = edges.value.map(edge => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-    }))
-    await workflowApi.updateWorkflow({
-      id: workflow.value.id,
-      nodes: updatedNodes,
-      connections: updatedConnections,
-    })
-    alert('Workflow saved successfully!')
+    await workflowApi.updateWorkflowEditor(workflow.value.id, payload)
+    alert('Saved')
   } catch (error) {
     console.error('Failed to save workflow:', error)
+    const message = error instanceof Error ? error.message : 'See console for details'
+    alert(`Failed to save workflow: ${message}`)
   }
 }
 
 onMounted(() => {
-  loadWorkflow()
+  window.addEventListener('keydown', onKeyDown)
+  loadWorkflowData()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
 })
 </script>
 
@@ -170,8 +355,13 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: white;
-  border-bottom: 1px solid #ddd;
+  background: var(--bg-primary, #fff);
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+
+.editor-header h1 {
+  color: var(--text-primary, #222);
+  margin: 0;
 }
 
 .editor-content {
@@ -182,21 +372,39 @@ onMounted(() => {
 .node-palette {
   width: 250px;
   padding: 1rem;
-  background: #f5f5f5;
-  border-right: 1px solid #ddd;
+  background-color: var(--bg-secondary, #f5f5f5);
+  color: var(--text-primary, #333);
+  border-right: 1px solid var(--border-color, #ddd);
 }
 
 .node-item {
   padding: 1rem;
   margin-bottom: 0.5rem;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #222);
+  border: 1px solid var(--border-color, #ddd);
   border-radius: 4px;
   cursor: grab;
 }
 
 .node-item:hover {
-  background: #f0f0f0;
+  background: var(--hover-bg, #f0f0f0);
+}
+
+.help-box {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary, #f9f9f9);
+  color: var(--text-secondary, #555);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.help-box ul {
+  padding-left: 1.2rem;
+  margin: 0.5rem 0 0;
 }
 
 .flow-canvas {
@@ -204,7 +412,7 @@ onMounted(() => {
   height: 100%;
 }
 
-.btn-primary, .btn-secondary {
+.btn-primary, .btn-secondary, .btn-danger {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 4px;
@@ -214,6 +422,12 @@ onMounted(() => {
 .btn-primary {
   background: #007bff;
   color: white;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  margin-right: 0.5rem;
 }
 
 .btn-secondary {

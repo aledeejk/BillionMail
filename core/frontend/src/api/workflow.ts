@@ -9,258 +9,141 @@ import type {
   GetWorkflowStatsRequest,
 } from '@/types/workflow'
 
-// Mock data storage
-let workflows: Workflow[] = [
-  {
-    id: '1',
-    name: 'Newsletter Campaign',
-    description: 'Monthly newsletter automation',
-    isActive: true,
-    version: 2,
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-05-01T14:30:00Z',
-  },
-  {
-    id: '2',
-    name: 'Welcome Email Series',
-    description: 'Automated welcome emails for new subscribers',
-    isActive: false,
-    version: 1,
-    createdAt: '2024-02-20T09:15:00Z',
-    updatedAt: '2024-03-10T11:45:00Z',
-  },
-  {
-    id: '3',
-    name: 'Abandoned Cart Reminder',
-    description: 'Remind customers about abandoned carts',
-    isActive: true,
-    version: 3,
-    createdAt: '2024-03-05T16:20:00Z',
-    updatedAt: '2024-05-07T08:00:00Z',
-  },
-]
+const normalizeWorkflow = (workflow: any): Workflow => ({
+  id: String(workflow.id),
+  name: workflow.name || '',
+  description: workflow.description || '',
+  isActive: Boolean(workflow.is_active ?? workflow.isActive),
+  version: Number(workflow.version || 0),
+  createdAt: String(workflow.created_at ?? workflow.createdAt ?? ''),
+  updatedAt: String(workflow.updated_at ?? workflow.updatedAt ?? ''),
+})
 
-let nextId = 4
+const normalizeVersion = (version: any): WorkflowVersion => ({
+  version: Number(version.version || 0),
+  createdAt: String(version.created_at ?? version.createdAt ?? ''),
+  status: version.status === 1 || version.status === 'active' ? 'active' : 'inactive',
+})
 
-const workflowStats: Record<string, WorkflowStatistics> = {
-  '1': {
-    totalExecutions: 150,
-    successfulExecutions: 145,
-    failedExecutions: 5,
-    averageDuration: 1200,
-    lastExecutionTime: '2024-05-06T12:00:00Z',
-  },
-  '2': {
-    totalExecutions: 75,
-    successfulExecutions: 70,
-    failedExecutions: 5,
-    averageDuration: 800,
-    lastExecutionTime: '2024-04-15T10:30:00Z',
-  },
-  '3': {
-    totalExecutions: 200,
-    successfulExecutions: 190,
-    failedExecutions: 10,
-    averageDuration: 1500,
-    lastExecutionTime: '2024-05-07T07:45:00Z',
-  },
-}
-
-const workflowVersions: Record<string, WorkflowVersion[]> = {
-  '1': [
-    { version: 1, createdAt: '2024-01-15T10:00:00Z', status: 'active' },
-    { version: 2, createdAt: '2024-05-01T14:30:00Z', status: 'active' },
-  ],
-  '2': [
-    { version: 1, createdAt: '2024-02-20T09:15:00Z', status: 'inactive' },
-  ],
-  '3': [
-    { version: 1, createdAt: '2024-03-05T16:20:00Z', status: 'active' },
-    { version: 2, createdAt: '2024-04-10T13:00:00Z', status: 'active' },
-    { version: 3, createdAt: '2024-05-07T08:00:00Z', status: 'active' },
-  ],
-}
-
-const workflowExecutions: Record<string, WorkflowExecution[]> = {
-  '1': [
-    {
-      id: 'exec1',
-      workflowId: '1',
-      status: 'completed',
-      startedAt: '2024-05-06T12:00:00Z',
-      completedAt: '2024-05-06T12:20:00Z',
-      errorMessage: undefined,
-    },
-  ],
-  '2': [
-    {
-      id: 'exec2',
-      workflowId: '2',
-      status: 'completed',
-      startedAt: '2024-04-15T10:30:00Z',
-      completedAt: '2024-04-15T10:38:00Z',
-      errorMessage: undefined,
-    },
-  ],
-  '3': [
-    {
-      id: 'exec3',
-      workflowId: '3',
-      status: 'completed',
-      startedAt: '2024-05-07T07:45:00Z',
-      completedAt: '2024-05-07T08:00:00Z',
-      errorMessage: undefined,
-    },
-  ],
-}
-
-// Simulate delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const normalizeExecution = (execution: any): WorkflowExecution => ({
+  id: String(execution.id),
+  workflowId: String(execution.workflow_id ?? execution.workflowId ?? ''),
+  status: execution.status === 2 || execution.status === 'completed' ? 'completed'
+    : execution.status === 3 || execution.status === 'failed' ? 'failed'
+      : execution.status === 1 || execution.status === 'running' ? 'running'
+        : 'pending',
+  startedAt: String(execution.started_at ?? execution.startedAt ?? ''),
+  completedAt: execution.completed_at ?? execution.completedAt,
+  errorMessage: execution.error_message ?? execution.errorMessage,
+})
 
 export const workflowApi = {
   async getWorkflows(params?: { page?: number; limit?: number; search?: string }): Promise<Workflow[]> {
-    await delay(400)
-    let result = [...workflows]
-    if (params?.search) {
-      result = result.filter(w => w.name.toLowerCase().includes(params.search!.toLowerCase()) || w.description.toLowerCase().includes(params.search!.toLowerCase()))
-    }
-    if (params?.limit) {
-      result = result.slice(0, params.limit)
-    }
-    return result
+    const response: any = await instance.get('/workflow', { params })
+    const list = Array.isArray(response) ? response : response?.list || []
+    return list.map(normalizeWorkflow)
   },
 
   async getWorkflow(id: string): Promise<Workflow | null> {
-    await delay(300)
-    return workflows.find(w => w.id === id) || null
+    const response: any = await instance.get(`/workflow/${id}`)
+    return response ? normalizeWorkflow(response) : null
   },
 
   async createWorkflow(data: CreateWorkflowRequest): Promise<Workflow> {
-    await delay(500)
-    const newWorkflow: Workflow = {
-      id: nextId.toString(),
+    const response: any = await instance.post('/workflow', {
       name: data.name,
       description: data.description,
-      isActive: false,
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    workflows.push(newWorkflow)
-    // Add default stats for new workflow
-    workflowStats[newWorkflow.id] = {
-      totalExecutions: 0,
-      successfulExecutions: 0,
-      failedExecutions: 0,
-      averageDuration: 0,
-      lastExecutionTime: undefined,
-    }
-    nextId++
-    return newWorkflow
+    })
+    return normalizeWorkflow(response)
   },
 
   async updateWorkflow(data: UpdateWorkflowRequest): Promise<Workflow> {
-    await delay(400)
-    const workflow = workflows.find(w => w.id === data.id)
-    if (!workflow) throw new Error('Workflow not found')
-    if (data.name !== undefined) workflow.name = data.name
-    if (data.description !== undefined) workflow.description = data.description
-    if (data.nodes !== undefined) workflow.nodes = data.nodes
-    if (data.connections !== undefined) workflow.connections = data.connections
-    workflow.updatedAt = new Date().toISOString()
-    return workflow
+    if (data.nodes !== undefined || data.connections !== undefined) {
+      await instance.put(`/workflow/${data.id}/editor`, {
+        nodes: data.nodes?.map(n => ({
+          id: n.id,
+          type: n.type,
+          config: n.config,
+          position_x: n.position?.x || 0,
+          position_y: n.position?.y || 0,
+        })) || [],
+        connections: data.connections?.map(c => ({
+          id: c.id,
+          source: c.sourceNodeId,
+          target: c.targetNodeId,
+        })) || [],
+      })
+      const workflow = await this.getWorkflow(data.id)
+      if (!workflow) throw new Error('Workflow not found')
+      return workflow
+    }
+
+    const response: any = await instance.put(`/workflow/${data.id}`, {
+      name: data.name,
+      description: data.description,
+    })
+    return normalizeWorkflow(response)
   },
 
   async deleteWorkflow(id: string): Promise<void> {
-    await delay(300)
-    const index = workflows.findIndex(w => w.id === id)
-    if (index === -1) throw new Error('Workflow not found')
-    workflows.splice(index, 1)
+    await instance.delete(`/workflow/${id}`)
   },
 
   async duplicateWorkflow(id: string): Promise<Workflow> {
-    await delay(600)
-    const original = workflows.find(w => w.id === id)
-    if (!original) throw new Error('Workflow not found')
-    const newWorkflow: Workflow = {
-      id: nextId.toString(),
-      name: `${original.name} (Copy)`,
-      description: original.description,
-      isActive: original.isActive,
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    workflows.push(newWorkflow)
-    // Add default stats for duplicated workflow
-    workflowStats[newWorkflow.id] = {
-      totalExecutions: 0,
-      successfulExecutions: 0,
-      failedExecutions: 0,
-      averageDuration: 0,
-      lastExecutionTime: undefined,
-    }
-    nextId++
-    return newWorkflow
+    const workflow = await this.getWorkflow(id)
+    const response: any = await instance.post(`/workflow/${id}/duplicate`, {
+      name: `${workflow?.name || 'Workflow'} (Copy)`,
+    })
+    return normalizeWorkflow(response?.workflow || response)
   },
 
   async toggleWorkflow(id: string, isActive: boolean): Promise<Workflow> {
-    console.log('[Toggle API] Toggling workflow', id, 'to active:', isActive)
-    await delay(400)
-    const workflow = workflows.find(w => w.id === id)
+    await instance.post(`/workflow/${id}/toggle`, { is_active: isActive })
+    const workflow = await this.getWorkflow(id)
     if (!workflow) throw new Error('Workflow not found')
-    workflow.isActive = isActive
-    workflow.updatedAt = new Date().toISOString()
-    console.log('[Toggle API] Updated workflow:', workflow)
     return workflow
   },
 
   async getWorkflowStats(request: GetWorkflowStatsRequest): Promise<WorkflowStatistics> {
-    await delay(350)
-    const stats = workflowStats[request.id]
-    if (!stats) throw new Error('Workflow stats not found')
-    return stats
+    const response: any = await instance.get(`/workflow/${request.id}/stats`)
+    return {
+      totalExecutions: Number(response.active_contacts || response.totalExecutions || 0),
+      successfulExecutions: Number(response.emails_sent || response.successfulExecutions || 0),
+      failedExecutions: Number(response.failedExecutions || 0),
+      averageDuration: Number(response.averageDuration || 0),
+      lastExecutionTime: response.lastExecutionTime,
+    }
   },
 
   async getWorkflowVersions(id: string): Promise<WorkflowVersion[]> {
-    await delay(400)
-    const versions = workflowVersions[id] || []
-    const workflow = workflows.find(w => w.id === id)
-    if (workflow) {
-      return versions.map(v => ({
-        ...v,
-        status: v.version === workflow.version ? 'active' : 'inactive'
-      }))
-    }
-    return versions
+    const response: any = await instance.get(`/workflow/${id}/versions`)
+    return (Array.isArray(response) ? response : []).map(normalizeVersion)
   },
 
   async getWorkflowExecutions(workflowId: string): Promise<WorkflowExecution[]> {
-    await delay(450)
-    return workflowExecutions[workflowId] || []
+    const response: any = await instance.get(`/workflow/${workflowId}/executions`)
+    return (Array.isArray(response) ? response : []).map(normalizeExecution)
   },
 
   async executeWorkflow(id: string): Promise<WorkflowExecution> {
-    await delay(800)
-    const execution: WorkflowExecution = {
-      id: `exec${Date.now()}`,
-      workflowId: id,
-      status: 'completed',
-      startedAt: new Date().toISOString(),
-      completedAt: new Date(Date.now() + 2000).toISOString(),
-      errorMessage: undefined,
-    }
-    if (!workflowExecutions[id]) workflowExecutions[id] = []
-    workflowExecutions[id].push(execution)
-    return execution
+    const response: any = await instance.post(`/workflow/${id}/execute`)
+    return normalizeExecution(response)
   },
 
   async rollbackWorkflow(id: string, version: number): Promise<Workflow> {
-    await delay(600)
-    const workflow = workflows.find(w => w.id === id)
-    if (!workflow) throw new Error('Workflow not found')
-    workflow.version = version
-    workflow.updatedAt = new Date().toISOString()
-    return workflow
+    throw new Error(`Workflow rollback endpoint is not available for workflow ${id} version ${version}`)
+  },
+
+  async getWorkflowEditor(id: string): Promise<any> {
+    const response: any = await instance.get(`/workflow/${id}/editor`)
+    return {
+      workflow: normalizeWorkflow(response.workflow),
+      nodes: response.nodes || [],
+      connections: response.connections || [],
+    }
+  },
+
+  async updateWorkflowEditor(id: string, data: any): Promise<any> {
+    return instance.put(`/workflow/${id}/editor`, data)
   },
 }

@@ -119,6 +119,11 @@ func Start(ctx context.Context) (err error) {
 
 	gtimer.Add(1*time.Minute, func() {
 		//gtimer.Add(5*time.Second, func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				g.Log().Warning(ctx, "ProcessApiMailQueueWithLock skipped: ", recovered)
+			}
+		}()
 		batch_mail.ProcessApiMailQueueWithLock(ctx)
 	})
 

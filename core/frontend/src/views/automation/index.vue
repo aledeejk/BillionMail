@@ -60,7 +60,7 @@
           <button class="btn-sm btn-secondary" @click="viewDiagram(workflow)">
             🧩 View Flow
           </button>
-          <button class="btn-sm btn-secondary" @click="$router.push(`/workflow-editor/${workflow.id}`)">
+          <button class="btn-sm btn-secondary" @click="router.push(`/workflow-editor/${workflow.id}`)">
             🔧 Edit Flow
           </button>
           <button class="btn-sm btn-secondary" @click="editWorkflow(workflow)">
@@ -223,8 +223,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import type { Workflow, WorkflowStatistics, WorkflowVersion } from '@/types/workflow';
 import { workflowApi } from '@/api/workflow';
+
+const router = useRouter();
 
 // State
 const workflows = ref<Workflow[]>([]);
