@@ -253,6 +253,7 @@ func (s *ServiceEditor) UpdateEditorData(ctx context.Context, workflowId string,
 	})
 }
 
+// RollbackEditorData restores workflow nodes and connections from a specific version snapshot.
 func (s *ServiceEditor) RollbackEditorData(ctx context.Context, workflowId string, version int) (*v1.GetWorkflowEditorRes, error) {
 	fmt.Println("[ROLLBACK] no version increment")
 
@@ -411,7 +412,16 @@ func (s *ServiceEditor) RollbackEditorData(ctx context.Context, workflowId strin
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	fmt.Println("[ROLLBACK] committed without workflow version increment and without workflow_version insert; restored nodes:", insertedNodeCount, "connections:", insertedConnectionCount)
+	fmt.Println("[ROLLBACK] committed; restored nodes:", insertedNodeCount, "connections:", insertedConnectionCount)
+
+	_, err = db.Model("workflow").Where("id", id).Data(g.Map{
+		"version":    version,
+		"updated_at": now,
+	}).Update()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("[ROLLBACK] workflow version updated to:", version)
 
 	return s.GetEditorData(ctx, workflowId)
 }

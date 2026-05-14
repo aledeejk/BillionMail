@@ -10,6 +10,7 @@ import (
 	"billionmail-core/utility/types/api_v1"
 
 	"github.com/gogf/gf/v2/errors/gerror"
+	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/net/ghttp"
 )
 
@@ -70,7 +71,19 @@ func (c *ControllerEditorV1) UpdateEditor(r *ghttp.Request) {
 }
 
 func (c *ControllerEditorV1) Rollback(r *ghttp.Request) {
-	result, err := workflowService.WorkflowEditor().RollbackEditorData(r.Context(), r.Get("id").String(), r.Get("version").Int())
+	id := r.Get("id").String()
+	version := r.Get("version").Int()
+	if id == "" || version <= 0 {
+		r.Response.WriteJsonExit(api_v1.StandardRes{
+			Success: false,
+			Code:    400,
+			Msg:     "Invalid parameters",
+		})
+		return
+	}
+
+	// Выполняем rollback
+	_, err := workflowService.WorkflowEditor().RollbackEditorData(r.Context(), id, version)
 	if err != nil {
 		r.Response.WriteJsonExit(api_v1.StandardRes{
 			Success: false,
@@ -80,11 +93,32 @@ func (c *ControllerEditorV1) Rollback(r *ghttp.Request) {
 		return
 	}
 
+	// Загружаем обновлённый workflow из БД (с новой версией и датой)
+	var workflowData struct {
+		Id          string `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		IsActive    bool   `json:"is_active"`
+		Version     int    `json:"version"`
+		UpdatedAt   int64  `json:"updated_at"`
+	}
+	err = g.DB().Model("workflow").Where("id", id).Scan(&workflowData)
+	if err != nil {
+		r.Response.WriteJsonExit(api_v1.StandardRes{
+			Success: false,
+			Code:    500,
+			Msg:     "Failed to load updated workflow",
+		})
+		return
+	}
+
 	r.Response.WriteJsonExit(api_v1.StandardRes{
 		Success: true,
 		Code:    0,
 		Msg:     "Workflow rolled back successfully",
-		Data:    result,
+		Data: map[string]interface{}{
+			"workflow": workflowData,
+		},
 	})
 }
 
@@ -111,56 +145,6 @@ func (c *ControllerEditorV1) DeleteVersion(r *ghttp.Request) {
 		Success: true,
 		Code:    0,
 		Msg:     "Version deleted",
-	})
-}
-
-func (c *ControllerEditorV1) GetExecutionLog(r *ghttp.Request) {
-	r.Response.WriteJsonExit(api_v1.StandardRes{
-		Success: true,
-		Code:    0,
-		Msg:     "Success",
-		Data: map[string]interface{}{
-			"list": []map[string]interface{}{
-				{
-					"execution_id":  "exec-1",
-					"contact_id":    "contact-123",
-					"contact_email": "demo@example.com",
-					"status":        "completed",
-					"started_at":    "2025-05-13T10:00:00Z",
-					"finished_at":   "2025-05-13T10:05:00Z",
-					"nodes": []map[string]interface{}{
-						{
-							"node_id":   "trigger-1",
-							"node_type": "trigger",
-							"status":    "success",
-							"timestamp": "2025-05-13T10:00:00Z",
-						},
-						{
-							"node_id":   "email-1",
-							"node_type": "email",
-							"status":    "success",
-							"timestamp": "2025-05-13T10:01:00Z",
-						},
-					},
-				},
-			},
-			"total": 1,
-		},
-	})
-}
-
-func (c *ControllerEditorV1) GetReport(r *ghttp.Request) {
-	r.Response.WriteJsonExit(api_v1.StandardRes{
-		Success: true,
-		Code:    0,
-		Msg:     "Success",
-		Data: map[string]interface{}{
-			"sent":          10,
-			"emails_sent":   10,
-			"unique_opens":  5,
-			"unique_clicks": 2,
-			"unsubscribes":  0,
-		},
 	})
 }
 

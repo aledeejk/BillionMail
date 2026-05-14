@@ -72,6 +72,9 @@
           <button class="btn-sm btn-secondary" @click="editWorkflow(workflow)">
             ✏️ Edit
           </button>
+          <button class="btn-sm btn-success" @click="runWorkflow(workflow.id)">
+            ▶️ Run
+          </button>
           <button
             class="btn-sm btn-secondary"
             @click="toggleWorkflow(workflow.id, !workflow.isActive)"
@@ -429,6 +432,41 @@ const duplicateWorkflow = async (id: string) => {
   }
 };
 
+const runWorkflow = async (id: string) => {
+  try {
+    const email = prompt('Enter contact email for test run:', 'test@example.com');
+    if (!email) return;
+    
+    const inputDataStr = prompt('Enter test data (JSON):', '{"email_opened": true}');
+    let inputData: Record<string, any> = {};
+    if (inputDataStr) {
+      try {
+        inputData = JSON.parse(inputDataStr);
+      } catch(e) {
+        console.warn('Invalid JSON, using empty object');
+      }
+    }
+    
+    inputData.email = email;
+    inputData.contact_email = email;
+    
+    const result = await workflowApi.executeWorkflow(id, {
+      trigger: 'manual',
+      contact_email: email,
+      input_data: inputData
+    });
+    
+    alert(`✅ Workflow executed successfully!\n📋 Execution ID: ${result.id}\n📊 Status: ${result.status}`);
+    console.log('Execution result:', result);
+    
+    await loadWorkflows();
+  } catch (error) {
+    console.error('Failed to run workflow:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    alert(`❌ Failed to run workflow: ${errorMessage}`);
+  }
+};
+
 const viewStats = async (id: string) => {
   try {
     selectedWorkflowId.value = id;
@@ -535,37 +573,28 @@ const deleteWorkflowVersion = async (id: string, version: number) => {
 const rollbackWorkflow = async (id: string, version: number) => {
   if (!confirm(`Rollback to version ${version}?`)) return;
   try {
-    const result = await workflowApi.rollbackWorkflow(id, version);
-    const index = workflows.value.findIndex((w) => w.id === id);
-    if (index !== -1 && result.workflow) {
-      workflows.value[index] = result.workflow;
-    }
-    window.dispatchEvent(new CustomEvent('workflow-rollback-completed', {
-      detail: {
-        workflowId: id,
-        version,
-        nodes: result.nodes || [],
-        connections: result.connections || [],
-      },
-    }));
-    const rollbackEvent = JSON.stringify({
-      workflowId: id,
-      version,
-      timestamp: Date.now(),
-    });
-    localStorage.setItem('workflow-rollback-completed', rollbackEvent);
-    if ('BroadcastChannel' in window) {
-      const channel = new BroadcastChannel('workflow-events');
-      channel.postMessage({
-        type: 'workflow-rollback-completed',
-        workflowId: id,
-        version,
-      });
-      channel.close();
-    }
-    showVersionsModal.value = false;
+    const loadingDiv = document.createElement('div');
+    loadingDiv.textContent = 'Rolling back... Please wait.';
+    loadingDiv.style.position = 'fixed';
+    loadingDiv.style.top = '50%';
+    loadingDiv.style.left = '50%';
+    loadingDiv.style.transform = 'translate(-50%, -50%)';
+    loadingDiv.style.background = '#000';
+    loadingDiv.style.color = '#fff';
+    loadingDiv.style.padding = '1rem 2rem';
+    loadingDiv.style.borderRadius = '8px';
+    loadingDiv.style.zIndex = '9999';
+    document.body.appendChild(loadingDiv);
+
+    await workflowApi.rollbackWorkflow(id, version);
+    
+    window.location.reload();
   } catch (error) {
     console.error('Failed to rollback workflow:', error);
+    alert('Failed to rollback workflow');
+
+    const loadingDiv = document.querySelector('div[style*="position: fixed"]');
+    if (loadingDiv) loadingDiv.remove();
   }
 };
 
@@ -634,6 +663,15 @@ onMounted(() => {
 
 .btn-primary:hover {
   background: #0056b3;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #1e7e34;
 }
 
 .tabs {

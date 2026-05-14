@@ -441,16 +441,21 @@ const loadWorkflowData = async () => {
     const data = await workflowApi.getWorkflowEditor(id)
 
     workflow.value = data.workflow
-    nodes.value = (data.nodes || []).map((n: any) => ({
-      id: n.id,
-      type: 'default',
-      position: { x: n.position_x ?? n.positionX ?? 0, y: n.position_y ?? n.positionY ?? 0 },
-      data: {
-        config: n.config || {},
-        label: getNodeConfigLabel(n.type, n.config || {}),
-        nodeType: n.type,
-      },
-    }))
+    nodes.value = (data.nodes || []).map((n: any) => {
+      const xPos = typeof n.position_x === 'number' ? n.position_x : Number(n.position_x || n.positionX || 0)
+      const yPos = typeof n.position_y === 'number' ? n.position_y : Number(n.position_y || n.positionY || 0)
+      
+      return {
+        id: n.id,
+        type: 'default',
+        position: { x: xPos, y: yPos },
+        data: {
+          config: n.config || {},
+          label: getNodeConfigLabel(n.type, n.config || {}),
+          nodeType: n.type,
+        },
+      }
+    })
     edges.value = (data.connections || []).map((c: any) => ({
       id: c.id,
       source: c.source,
