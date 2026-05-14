@@ -66,17 +66,20 @@ export default defineConfig({
 		define: {
 			'import.meta.env': JSON.stringify({
 				SERVER: server,
-				API_URL_PREFIX: getEnv('API_URL_PREFIX'),
+				API_URL_PREFIX: getEnv('API_URL_PREFIX') || '/api',
 			}),
 		},
 	},
 	server: {
+		htmlFallback: 'index',
+		historyApiFallback: true,
 		proxy: {
 			'/api': {
 				target: server.address,
 				secure: false,
 				changeOrigin: true,
-				pathRewrite: { '^/api': '' },
+				timeout: 60000,
+				proxyTimeout: 60000,
 			},
 		},
 	},

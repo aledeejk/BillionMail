@@ -9,7 +9,9 @@ import (
 )
 
 func (s *WorkflowService) GetWorkflowVersions(ctx context.Context, workflowId int64) ([]*WorkflowVersion, error) {
-	return WorkflowRepository().GetWorkflowVersions(ctx, workflowId)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return WorkflowRepository().GetWorkflowVersions(timeoutCtx, workflowId)
 }
 
 func (s *WorkflowService) RollbackWorkflow(ctx context.Context, workflowId int64, versionId int64) error {

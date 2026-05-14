@@ -57,7 +57,13 @@
           <button class="btn-sm btn-secondary" @click="viewVersions(workflow.id)">
             📜 Versions
           </button>
-          <button class="btn-sm btn-secondary" @click="viewDiagram(workflow)">
+          <button class="btn-sm btn-secondary" @click="viewExecutionLog(workflow.id)">
+            📝 Execution Log
+          </button>
+          <button class="btn-sm btn-secondary" @click="viewReport(workflow.id)">
+            📈 Reports
+          </button>
+          <button class="btn-sm btn-secondary" @click="router.push(`/workflow-view/${workflow.id}`)">
             🧩 View Flow
           </button>
           <button class="btn-sm btn-secondary" @click="router.push(`/workflow-editor/${workflow.id}`)">
@@ -90,6 +96,11 @@
           <button class="close-btn" @click="showStatsModal = false">✕</button>
         </div>
         <div class="modal-body">
+          <div class="tabs">
+            <button class="tab" :class="{ active: statsTab === 'summary' }" @click="statsTab = 'summary'">Summary</button>
+            <button class="tab" :class="{ active: statsTab === 'nodes' }" @click="statsTab = 'nodes'">Node Stats</button>
+          </div>
+          <template v-if="statsTab === 'summary'">
           <div v-if="selectedStats" class="stats-grid">
             <div class="stat-card">
               <span class="stat-label">Total Executions</span>
@@ -107,6 +118,97 @@
               <span class="stat-label">Avg Duration</span>
               <span class="stat-value">{{ (selectedStats.averageDuration / 1000).toFixed(1) }}s</span>
             </div>
+          </div>
+          </template>
+          <template v-else>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Node</th>
+                  <th>Type</th>
+                  <th>Reached</th>
+                  <th>Conversion</th>
+                  <th>Avg time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="nodeStats.length === 0">
+                  <td colspan="5">No node statistics yet</td>
+                </tr>
+                <tr v-for="node in nodeStats" :key="node.node_id">
+                  <td>{{ node.node_id }}</td>
+                  <td>{{ node.node_type }}</td>
+                  <td>{{ node.entered_count ?? node.reached }}</td>
+                  <td>{{ Number(node.conversion_rate ?? node.conversion ?? 0).toFixed(1) }}%</td>
+                  <td>{{ formatNodeDuration(node) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Execution Log Modal -->
+    <div v-if="showExecutionLogModal" class="modal execution-log-modal">
+      <div class="modal-content modal-wide">
+        <div class="modal-header">
+          <h2>Execution Log</h2>
+          <button class="close-btn" @click="showExecutionLogModal = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="filter-bar">
+            <input v-model="logFilters.contact" placeholder="Contact email" />
+            <select v-model="logFilters.status">
+              <option value="">All statuses</option>
+              <option value="success">Success</option>
+              <option value="failed">Failed</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+            </select>
+            <button class="btn-sm btn-secondary" @click="loadExecutionLogs">Apply</button>
+            <button class="btn-sm btn-secondary" @click="exportLogs">Export CSV</button>
+          </div>
+          <table class="data-table log-table">
+            <thead>
+              <tr>
+                <th>Contact</th>
+                <th>Status</th>
+                <th>Started</th>
+                <th>Finished</th>
+                <th>Nodes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="logsList.length === 0">
+                <td colspan="5">No execution logs yet</td>
+              </tr>
+              <tr v-for="log in logsList" :key="log.execution_id">
+                <td>{{ log.contact_email || log.contact_id }}</td>
+                <td><span class="status" :class="log.status">{{ log.status }}</span></td>
+                <td>{{ formatDateTime(log.started_at) }}</td>
+                <td>{{ formatDateTime(log.finished_at) }}</td>
+                <td>{{ formatNodeSummary(log) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reports Modal -->
+    <div v-if="showReportModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Workflow Reports</h2>
+          <button class="close-btn" @click="showReportModal = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="reportData" class="stats-grid">
+            <div class="stat-card"><span class="stat-label">Sent</span><span class="stat-value">{{ reportData.sent }}</span></div>
+            <div class="stat-card"><span class="stat-label">Unique opens</span><span class="stat-value">{{ reportData.unique_opens }}</span></div>
+            <div class="stat-card"><span class="stat-label">Unique clicks</span><span class="stat-value">{{ reportData.unique_clicks }}</span></div>
+            <div class="stat-card"><span class="stat-label">Unsubscribes</span><span class="stat-value">{{ reportData.unsubscribes }}</span></div>
           </div>
         </div>
       </div>
@@ -127,56 +229,26 @@
                 <span class="version-date">{{ formatDate(version.createdAt) }}</span>
                 <span class="version-status" :class="version.status">{{ version.status }}</span>
               </div>
-              <button
-                v-if="version.status !== 'active'"
-                class="btn-sm btn-secondary"
-                @click="rollbackWorkflow(selectedWorkflowId, version.version)"
-              >
-                Rollback
-              </button>
+              <div class="version-actions">
+                <button
+                  v-if="version.status !== 'active'"
+                  class="btn-sm btn-secondary"
+                  @click="rollbackWorkflow(selectedWorkflowId, version.version)"
+                >
+                  Rollback
+                </button>
+                <button
+                  v-if="version.status !== 'active'"
+                  class="btn-sm btn-danger"
+                  @click="deleteWorkflowVersion(selectedWorkflowId, version.version)"
+                >
+                  🗑 Delete
+                </button>
+              </div>
             </div>
           </div>
           <div v-else class="empty-state">
             <p>No versions found</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Diagram Modal -->
-    <div v-if="showDiagramModal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Workflow Diagram</h2>
-          <button class="close-btn" @click="showDiagramModal = false">✕</button>
-        </div>
-        <div class="modal-body">
-          <p class="diagram-header">Example flow for {{ selectedDiagram?.name || 'this workflow' }}</p>
-          <div class="diagram-row">
-            <div class="diagram-item">
-              <strong>Trigger</strong>
-              <p>Start event</p>
-            </div>
-            <div class="diagram-connector">→</div>
-            <div class="diagram-item">
-              <strong>Send Email</strong>
-              <p>Deliver message</p>
-            </div>
-            <div class="diagram-connector">→</div>
-            <div class="diagram-item">
-              <strong>Delay</strong>
-              <p>Pause before next step</p>
-            </div>
-            <div class="diagram-connector">→</div>
-            <div class="diagram-item">
-              <strong>Condition</strong>
-              <p>Check recipient response</p>
-            </div>
-            <div class="diagram-connector">→</div>
-            <div class="diagram-item">
-              <strong>Action</strong>
-              <p>Run next task</p>
-            </div>
           </div>
         </div>
       </div>
@@ -238,14 +310,22 @@ const tabs = ref(['All', 'Active', 'Inactive']);
 const showCreateDialog = ref(false);
 const showStatsModal = ref(false);
 const showVersionsModal = ref(false);
-const showDiagramModal = ref(false);
+const showExecutionLogModal = ref(false);
+const showReportModal = ref(false);
 const isEditMode = ref(false);
 const selectedWorkflowForEdit = ref<Workflow | null>(null);
 
 const selectedStats = ref<WorkflowStatistics | null>(null);
 const selectedVersions = ref<WorkflowVersion[]>([]);
 const selectedWorkflowId = ref<string>('');
-const selectedDiagram = ref<Workflow | null>(null);
+const statsTab = ref('summary');
+const nodeStats = ref<any[]>([]);
+const logsList = ref<any[]>([]);
+const reportData = ref<any>(null);
+const logFilters = ref({
+  contact: '',
+  status: '',
+});
 
 const formData = ref({
   name: '',
@@ -265,13 +345,9 @@ const filteredWorkflows = computed(() => {
 // Methods
 const loadWorkflows = async () => {
   loading.value = true;
-  try {
-    workflows.value = await workflowApi.getWorkflows();
-  } catch (error) {
-    console.error('Failed to load workflows:', error);
-  } finally {
-    loading.value = false;
-  }
+  const data = await workflowApi.getWorkflows();
+  workflows.value = data;
+  loading.value = false;
 };
 
 const editWorkflow = (workflow: Workflow) => {
@@ -293,13 +369,13 @@ const closeCreateDialog = () => {
 
 const createWorkflow = async () => {
   try {
-    const newWorkflow = await workflowApi.createWorkflow({
+    await workflowApi.createWorkflow({
       name: formData.value.name,
       description: formData.value.description,
       nodes: [],
       connections: [],
     });
-    workflows.value.push(newWorkflow);
+    await loadWorkflows();
     closeCreateDialog();
   } catch (error) {
     console.error('Failed to create workflow:', error);
@@ -334,11 +410,8 @@ const deleteWorkflow = async (id: string) => {
 };
 
 const toggleWorkflow = async (id: string, isActive: boolean) => {
-  console.log('[UI Toggle] Toggling workflow', id, 'to active:', isActive)
   try {
     const updated = await workflowApi.toggleWorkflow(id, isActive);
-    console.log('[UI Toggle] Received updated workflow:', updated)
-    // Update the workflow in the array using map to ensure reactivity
     workflows.value = workflows.value.map(w => 
       w.id === id ? updated : w
     )
@@ -358,11 +431,85 @@ const duplicateWorkflow = async (id: string) => {
 
 const viewStats = async (id: string) => {
   try {
+    selectedWorkflowId.value = id;
+    statsTab.value = 'summary';
     selectedStats.value = await workflowApi.getWorkflowStats({ id });
+    nodeStats.value = await workflowApi.getWorkflowNodeStats(id);
     showStatsModal.value = true;
   } catch (error) {
     console.error('Failed to load statistics:', error);
   }
+};
+
+const formatUnix = (value: number) => {
+  return value ? new Date(value * 1000).toLocaleString() : '-';
+};
+
+const viewExecutionLog = async (workflowId: string) => {
+  try {
+    selectedWorkflowId.value = workflowId;
+    await loadExecutionLogs();
+    showExecutionLogModal.value = true;
+  } catch (error) {
+    console.error('Failed to load execution logs:', error);
+  }
+};
+
+const loadExecutionLogs = async () => {
+  if (!selectedWorkflowId.value) return;
+  const data = await workflowApi.getWorkflowExecutionLogs(selectedWorkflowId.value, {
+    contact: logFilters.value.contact,
+    status: logFilters.value.status,
+  });
+  logsList.value = data?.list || [];
+};
+
+const viewReport = async (workflowId: string) => {
+  try {
+    selectedWorkflowId.value = workflowId;
+    reportData.value = await workflowApi.getWorkflowReport(workflowId);
+    showReportModal.value = true;
+  } catch (error) {
+    console.error('Failed to load report:', error);
+  }
+};
+
+const exportLogs = async () => {
+  if (!selectedWorkflowId.value) return;
+  try {
+    const blob = await workflowApi.exportExecutionLogs(selectedWorkflowId.value, {
+      contact: logFilters.value.contact,
+      status: logFilters.value.status,
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `execution_log_${selectedWorkflowId.value}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Failed to export logs:', error);
+  }
+};
+
+const formatDateTime = (value: string | number | null) => {
+  if (!value) return '-';
+  if (typeof value === 'number') return formatUnix(value);
+  return new Date(value).toLocaleString();
+};
+
+const formatNodeSummary = (log: any) => {
+  if (!Array.isArray(log.nodes) || log.nodes.length === 0) return '-';
+  return log.nodes.map((node: any) => `${node.node_type || node.node_id} (${node.status})`).join(' → ');
+};
+
+const formatNodeDuration = (node: any) => {
+  if (node.avg_duration_ms !== undefined) {
+    return `${(Number(node.avg_duration_ms) / 1000).toFixed(1)}s`;
+  }
+  return `${Number(node.average_duration_sec || 0).toFixed(1)}s`;
 };
 
 const viewVersions = async (id: string) => {
@@ -375,18 +522,46 @@ const viewVersions = async (id: string) => {
   }
 };
 
-const viewDiagram = (workflow: Workflow) => {
-  selectedDiagram.value = workflow;
-  showDiagramModal.value = true;
+const deleteWorkflowVersion = async (id: string, version: number) => {
+  if (!confirm(`Delete version ${version}? This action is irreversible.`)) return;
+  try {
+    await workflowApi.deleteWorkflowVersion(id, version);
+    selectedVersions.value = await workflowApi.getWorkflowVersions(id);
+  } catch (error) {
+    console.error('Failed to delete workflow version:', error);
+  }
 };
 
 const rollbackWorkflow = async (id: string, version: number) => {
   if (!confirm(`Rollback to version ${version}?`)) return;
   try {
-    const updated = await workflowApi.rollbackWorkflow(id, version);
+    const result = await workflowApi.rollbackWorkflow(id, version);
     const index = workflows.value.findIndex((w) => w.id === id);
-    if (index !== -1) {
-      workflows.value[index] = updated;
+    if (index !== -1 && result.workflow) {
+      workflows.value[index] = result.workflow;
+    }
+    window.dispatchEvent(new CustomEvent('workflow-rollback-completed', {
+      detail: {
+        workflowId: id,
+        version,
+        nodes: result.nodes || [],
+        connections: result.connections || [],
+      },
+    }));
+    const rollbackEvent = JSON.stringify({
+      workflowId: id,
+      version,
+      timestamp: Date.now(),
+    });
+    localStorage.setItem('workflow-rollback-completed', rollbackEvent);
+    if ('BroadcastChannel' in window) {
+      const channel = new BroadcastChannel('workflow-events');
+      channel.postMessage({
+        type: 'workflow-rollback-completed',
+        workflowId: id,
+        version,
+      });
+      channel.close();
     }
     showVersionsModal.value = false;
   } catch (error) {
@@ -650,6 +825,10 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.modal-wide {
+  max-width: 1000px;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -749,6 +928,133 @@ onMounted(() => {
   color: #333;
 }
 
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.filter-bar input,
+.filter-bar select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.65rem;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.execution-log-modal,
+.execution-log-modal *,
+.execution-log-modal .log-table,
+.execution-log-modal .log-table td,
+.execution-log-modal .log-table th,
+.execution-log-modal .log-table span,
+.execution-log-modal .log-table div {
+  color: #000000 !important;
+}
+
+.execution-log-modal .modal-content,
+.execution-log-modal .log-table,
+.execution-log-modal .log-table td,
+.execution-log-modal .log-table th {
+  background-color: #ffffff;
+}
+
+:global(.dark) .execution-log-modal,
+:global(.dark) .execution-log-modal .modal-content,
+:global(.dark) .execution-log-modal .modal-header,
+:global(.dark) .execution-log-modal .modal-body,
+:global(.dark) .execution-log-modal .data-table,
+:global(.dark) .execution-log-modal .data-table th,
+:global(.dark) .execution-log-modal .data-table td,
+:global(.dark) .execution-log-modal .filter-bar,
+:global([data-theme="dark"]) .execution-log-modal,
+:global([data-theme="dark"]) .execution-log-modal .modal-content,
+:global([data-theme="dark"]) .execution-log-modal .modal-header,
+:global([data-theme="dark"]) .execution-log-modal .modal-body,
+:global([data-theme="dark"]) .execution-log-modal .data-table,
+:global([data-theme="dark"]) .execution-log-modal .data-table th,
+:global([data-theme="dark"]) .execution-log-modal .data-table td,
+:global([data-theme="dark"]) .execution-log-modal .filter-bar {
+  color: #1f2937 !important;
+}
+
+:global(.dark) .execution-log-modal .modal-content,
+:global([data-theme="dark"]) .execution-log-modal .modal-content {
+  background: #ffffff;
+}
+
+:global(.dark) .execution-log-modal input,
+:global(.dark) .execution-log-modal select,
+:global([data-theme="dark"]) .execution-log-modal input,
+:global([data-theme="dark"]) .execution-log-modal select {
+  color: #111827 !important;
+  background: #ffffff;
+}
+
+.status.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status.failed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.contact-path {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.path-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.path-node {
+  padding: 0.65rem 0.9rem;
+  border-radius: 999px;
+  background: #e9ecef;
+}
+
+.path-node.success {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.path-node.failed {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.stub-note {
+  padding: 0.75rem;
+  background: #fff3cd;
+  color: #664d03;
+  border-radius: 6px;
+}
+
 .versions-list {
   display: flex;
   flex-direction: column;
@@ -769,6 +1075,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.version-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .version-num {

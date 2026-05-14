@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/gogf/gf/v2/frame/g"
 )
@@ -45,34 +44,11 @@ func (r *workflowRepository) CreateWorkflow(ctx context.Context, workflow *Workf
 		"description": workflow.Description,
 		"status":      workflow.Status,
 		"version":     workflow.Version,
-		"trigger":     workflow.Trigger,
 		"created_at":  workflow.CreatedAt,
 		"updated_at":  workflow.UpdatedAt,
 	}
 
-	if workflow.Nodes != nil {
-		nodes, err := json.Marshal(workflow.Nodes)
-		if err != nil {
-			return 0, err
-		}
-		data["nodes"] = string(nodes)
-	}
-	if workflow.Connections != nil {
-		connections, err := json.Marshal(workflow.Connections)
-		if err != nil {
-			return 0, err
-		}
-		data["connections"] = string(connections)
-	}
-	if workflow.Metadata != nil {
-		metadata, err := json.Marshal(workflow.Metadata)
-		if err != nil {
-			return 0, err
-		}
-		data["metadata"] = string(metadata)
-	}
-
-	result, err := g.DB().Model("bm_workflows").Ctx(ctx).Data(data).InsertAndGetId()
+	result, err := g.DB().Model("workflow").Ctx(ctx).Data(data).InsertAndGetId()
 	if err != nil {
 		return 0, err
 	}
@@ -85,44 +61,18 @@ func (r *workflowRepository) UpdateWorkflow(ctx context.Context, workflow *Workf
 		"description": workflow.Description,
 		"status":      workflow.Status,
 		"version":     workflow.Version,
-		"trigger":     workflow.Trigger,
 		"updated_at":  workflow.UpdatedAt,
 	}
 
-	if workflow.Nodes != nil {
-		nodes, err := json.Marshal(workflow.Nodes)
-		if err != nil {
-			return err
-		}
-		data["nodes"] = string(nodes)
-	}
-	if workflow.Connections != nil {
-		connections, err := json.Marshal(workflow.Connections)
-		if err != nil {
-			return err
-		}
-		data["connections"] = string(connections)
-	}
-	if workflow.Metadata != nil {
-		metadata, err := json.Marshal(workflow.Metadata)
-		if err != nil {
-			return err
-		}
-		data["metadata"] = string(metadata)
-	}
-
-	_, err := g.DB().Model("bm_workflows").Ctx(ctx).Where("id", workflow.Id).Data(data).Update()
+	_, err := g.DB().Model("workflow").Ctx(ctx).Where("id", workflow.Id).Data(data).Update()
 	return err
 }
 
 func (r *workflowRepository) DeleteWorkflow(ctx context.Context, workflowId int64) error {
-	_, err := g.DB().Model("bm_workflows").Ctx(ctx).Where("id", workflowId).Delete()
+	_, err := g.DB().Model("workflow").Ctx(ctx).Where("id", workflowId).Delete()
 	if err != nil {
 		return err
 	}
-	_, _ = g.DB().Model("bm_workflow_versions").Ctx(ctx).Where("workflow_id", workflowId).Delete()
-	_, _ = g.DB().Model("bm_workflow_executions").Ctx(ctx).Where("workflow_id", workflowId).Delete()
-	_, _ = g.DB().Model("bm_workflow_logs").Ctx(ctx).Where("workflow_id", workflowId).Delete()
 	return nil
 }
 
@@ -133,15 +83,11 @@ func (r *workflowRepository) GetWorkflowById(ctx context.Context, workflowId int
 		Description string `json:"description"`
 		Status      int    `json:"status"`
 		Version     int    `json:"version"`
-		Trigger     string `json:"trigger"`
-		Nodes       string `json:"nodes"`
-		Connections string `json:"connections"`
-		Metadata    string `json:"metadata"`
 		CreatedAt   int64  `json:"created_at"`
 		UpdatedAt   int64  `json:"updated_at"`
 	}
 
-	err := g.DB().Model("bm_workflows").Ctx(ctx).Where("id", workflowId).Scan(&record)
+	err := g.DB().Model("workflow").Ctx(ctx).Where("id", workflowId).Scan(&record)
 	if err != nil {
 		return nil, err
 	}
@@ -155,19 +101,8 @@ func (r *workflowRepository) GetWorkflowById(ctx context.Context, workflowId int
 		Description: record.Description,
 		Status:      record.Status,
 		Version:     record.Version,
-		Trigger:     record.Trigger,
 		CreatedAt:   record.CreatedAt,
 		UpdatedAt:   record.UpdatedAt,
-	}
-
-	if record.Nodes != "" {
-		_ = json.Unmarshal([]byte(record.Nodes), &workflow.Nodes)
-	}
-	if record.Connections != "" {
-		_ = json.Unmarshal([]byte(record.Connections), &workflow.Connections)
-	}
-	if record.Metadata != "" {
-		_ = json.Unmarshal([]byte(record.Metadata), &workflow.Metadata)
 	}
 
 	return workflow, nil
@@ -180,8 +115,11 @@ func (r *workflowRepository) ListWorkflows(ctx context.Context, page, pageSize i
 	if pageSize <= 0 {
 		pageSize = 20
 	}
+	if pageSize > 50 {
+		pageSize = 50
+	}
 
-	model := g.DB().Model("bm_workflows").Ctx(ctx).Safe()
+	model := g.DB().Model("workflow").Ctx(ctx).Safe()
 	if keyword != "" {
 		model = model.WhereLike("name", "%"+keyword+"%").WhereOrLike("description", "%"+keyword+"%")
 	}
@@ -200,15 +138,15 @@ func (r *workflowRepository) ListWorkflows(ctx context.Context, page, pageSize i
 		Description string `json:"description"`
 		Status      int    `json:"status"`
 		Version     int    `json:"version"`
-		Trigger     string `json:"trigger"`
-		Nodes       string `json:"nodes"`
-		Connections string `json:"connections"`
-		Metadata    string `json:"metadata"`
 		CreatedAt   int64  `json:"created_at"`
 		UpdatedAt   int64  `json:"updated_at"`
 	}
-	
-	err = model.Page(page, pageSize).Order("updated_at desc").Scan(&records)
+
+	err = model.
+		Fields("id, name, description, status, version, created_at, updated_at").
+		Page(page, pageSize).
+		Order("id desc").
+		Scan(&records)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -221,18 +159,8 @@ func (r *workflowRepository) ListWorkflows(ctx context.Context, page, pageSize i
 			Description: record.Description,
 			Status:      record.Status,
 			Version:     record.Version,
-			Trigger:     record.Trigger,
 			CreatedAt:   record.CreatedAt,
 			UpdatedAt:   record.UpdatedAt,
-		}
-		if record.Nodes != "" {
-			_ = json.Unmarshal([]byte(record.Nodes), &workflow.Nodes)
-		}
-		if record.Connections != "" {
-			_ = json.Unmarshal([]byte(record.Connections), &workflow.Connections)
-		}
-		if record.Metadata != "" {
-			_ = json.Unmarshal([]byte(record.Metadata), &workflow.Metadata)
 		}
 		workflows = append(workflows, workflow)
 	}
@@ -244,15 +172,11 @@ func (r *workflowRepository) CreateWorkflowVersion(ctx context.Context, version 
 	data := g.Map{
 		"workflow_id": version.WorkflowId,
 		"version":     version.Version,
-		"name":        version.Name,
-		"description": version.Description,
-		"status":      version.Status,
-		"trigger":     version.Trigger,
-		"definition":  version.Definition,
+		"content":     version.Definition,
 		"created_at":  version.CreatedAt,
 	}
 
-	result, err := g.DB().Model("bm_workflow_versions").Ctx(ctx).Data(data).InsertAndGetId()
+	result, err := g.DB().Model("workflow_version").Ctx(ctx).Data(data).InsertAndGetId()
 	if err != nil {
 		return 0, err
 	}
@@ -260,14 +184,38 @@ func (r *workflowRepository) CreateWorkflowVersion(ctx context.Context, version 
 }
 
 func (r *workflowRepository) GetWorkflowVersions(ctx context.Context, workflowId int64) ([]*WorkflowVersion, error) {
+	workflow, err := r.GetWorkflowById(ctx, workflowId)
+	if err != nil {
+		return nil, err
+	}
+	currentVersion := 0
+	if workflow != nil {
+		currentVersion = workflow.Version
+	}
+
 	var versions []*WorkflowVersion
-	err := g.DB().Model("bm_workflow_versions").Ctx(ctx).Where("workflow_id", workflowId).Order("version desc").Scan(&versions)
-	return versions, err
+	err = g.DB().Model("workflow_version").Ctx(ctx).
+		Fields("version, created_at, 0 AS status").
+		Where("workflow_id", workflowId).
+		Order("version desc").
+		Limit(50).
+		Scan(&versions)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, version := range versions {
+		if version.Version == currentVersion {
+			version.Status = 1
+		}
+	}
+
+	return versions, nil
 }
 
 func (r *workflowRepository) GetWorkflowVersionById(ctx context.Context, versionId int64) (*WorkflowVersion, error) {
 	var version WorkflowVersion
-	err := g.DB().Model("bm_workflow_versions").Ctx(ctx).Where("id", versionId).Scan(&version)
+	err := g.DB().Model("workflow_version").Ctx(ctx).Fields("id, workflow_id, version, content AS definition, created_at").Where("id", versionId).Scan(&version)
 	if err != nil {
 		return nil, err
 	}
@@ -279,20 +227,14 @@ func (r *workflowRepository) GetWorkflowVersionById(ctx context.Context, version
 
 func (r *workflowRepository) RecordExecution(ctx context.Context, execution *WorkflowExecution) (int64, error) {
 	data := g.Map{
-		"workflow_id":  execution.WorkflowId,
-		"version":      execution.Version,
-		"status":       execution.Status,
-		"trigger":      execution.Trigger,
-		"started_at":   execution.StartedAt,
-		"completed_at": execution.CompletedAt,
-		"duration":     execution.Duration,
-		"result":       execution.Result,
-		"error":        execution.Error,
-		"created_at":   execution.CreatedAt,
-		"updated_at":   execution.UpdatedAt,
+		"workflow_id":   execution.WorkflowId,
+		"status":        executionStatusText(execution.Status),
+		"started_at":    execution.StartedAt,
+		"completed_at":  execution.CompletedAt,
+		"error_message": execution.Error,
 	}
 
-	result, err := g.DB().Model("bm_workflow_executions").Ctx(ctx).Data(data).InsertAndGetId()
+	result, err := g.DB().Model("workflow_execution").Ctx(ctx).Data(data).InsertAndGetId()
 	if err != nil {
 		return 0, err
 	}
@@ -307,14 +249,35 @@ func (r *workflowRepository) ListExecutions(ctx context.Context, workflowId int6
 		pageSize = 20
 	}
 
-	model := g.DB().Model("bm_workflow_executions").Ctx(ctx).Where("workflow_id", workflowId).Safe()
+	model := g.DB().Model("workflow_execution").Ctx(ctx).Where("workflow_id", workflowId).Safe()
 	total, err := model.Count()
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var executions []*WorkflowExecution
-	err = model.Page(page, pageSize).Order("started_at desc").Scan(&executions)
+	var records []struct {
+		Id           int64  `json:"id"`
+		WorkflowId   int64  `json:"workflow_id"`
+		Status       string `json:"status"`
+		StartedAt    int64  `json:"started_at"`
+		CompletedAt  int64  `json:"completed_at"`
+		ErrorMessage string `json:"error_message"`
+	}
+	err = model.Page(page, pageSize).Order("started_at desc").Scan(&records)
+	if err != nil {
+		return nil, 0, err
+	}
+	executions := make([]*WorkflowExecution, 0, len(records))
+	for _, record := range records {
+		executions = append(executions, &WorkflowExecution{
+			Id:          record.Id,
+			WorkflowId:  record.WorkflowId,
+			Status:      executionStatusCode(record.Status),
+			StartedAt:   record.StartedAt,
+			CompletedAt: record.CompletedAt,
+			Error:       record.ErrorMessage,
+		})
+	}
 	return executions, int(total), err
 }
 
@@ -324,10 +287,10 @@ func (r *workflowRepository) CreateLog(ctx context.Context, log *WorkflowLog) (i
 		"execution_id": log.ExecutionId,
 		"level":        log.Level,
 		"message":      log.Message,
-		"created_at":   log.CreatedAt,
+		"timestamp":    log.CreatedAt,
 	}
 
-	result, err := g.DB().Model("bm_workflow_logs").Ctx(ctx).Data(data).InsertAndGetId()
+	result, err := g.DB().Model("workflow_execution_log").Ctx(ctx).Data(data).InsertAndGetId()
 	if err != nil {
 		return 0, err
 	}
@@ -342,13 +305,60 @@ func (r *workflowRepository) ListLogs(ctx context.Context, workflowId int64, pag
 		pageSize = 20
 	}
 
-	model := g.DB().Model("bm_workflow_logs").Ctx(ctx).Where("workflow_id", workflowId).Safe()
+	model := g.DB().Model("workflow_execution_log").Ctx(ctx).Where("workflow_id", workflowId).Safe()
 	total, err := model.Count()
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var logs []*WorkflowLog
-	err = model.Page(page, pageSize).Order("created_at desc").Scan(&logs)
+	var records []struct {
+		Id          int64  `json:"id"`
+		WorkflowId  int64  `json:"workflow_id"`
+		ExecutionId int64  `json:"execution_id"`
+		Level       string `json:"level"`
+		Message     string `json:"message"`
+		Timestamp   int64  `json:"timestamp"`
+	}
+	err = model.Page(page, pageSize).Order("timestamp desc").Scan(&records)
+	if err != nil {
+		return nil, 0, err
+	}
+	logs := make([]*WorkflowLog, 0, len(records))
+	for _, record := range records {
+		logs = append(logs, &WorkflowLog{
+			Id:          record.Id,
+			WorkflowId:  record.WorkflowId,
+			ExecutionId: record.ExecutionId,
+			Level:       record.Level,
+			Message:     record.Message,
+			CreatedAt:   record.Timestamp,
+		})
+	}
 	return logs, int(total), err
+}
+
+func executionStatusText(status int) string {
+	switch status {
+	case 1:
+		return "running"
+	case 2:
+		return "completed"
+	case 3:
+		return "failed"
+	default:
+		return "pending"
+	}
+}
+
+func executionStatusCode(status string) int {
+	switch status {
+	case "running":
+		return 1
+	case "completed":
+		return 2
+	case "failed":
+		return 3
+	default:
+		return 0
+	}
 }

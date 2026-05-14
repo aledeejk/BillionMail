@@ -1,7 +1,7 @@
 # https://goframe.org/docs/web/server-config-file-template
 server:
   address:     ":80"
-  httpsPort: 443
+  httpsPort: 0
   readTimeout: "600s"
   writeTimeout: "0"
   idleTimeout: "60s"
@@ -21,7 +21,7 @@ server:
   cookiePath: "/"
   cookieDomain: ""
   cookieSameSite: "Lax" # Options: Lax, Strict, None
-  cookieSecure: true # Whether to use secure cookies, only effective when HTTPS is enabled
+  cookieSecure: false #  Whether to use secure cookies, only effective when HTTPS is enabled
   cookieHttpOnly: true # Whether to enable HttpOnly, preventing JavaScript from accessing cookies
 
 

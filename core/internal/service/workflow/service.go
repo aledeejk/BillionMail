@@ -83,9 +83,7 @@ func (s *WorkflowService) UpdateWorkflow(ctx context.Context, workflow *Workflow
 		return gerror.Newf("workflow %d not found", workflow.Id)
 	}
 
-	if workflow.Version <= 0 {
-		workflow.Version = current.Version
-	}
+	workflow.Version = current.Version + 1
 
 	err = WorkflowRepository().UpdateWorkflow(ctx, workflow)
 	if err != nil {
@@ -127,7 +125,9 @@ func (s *WorkflowService) DeleteWorkflow(ctx context.Context, workflowId int64) 
 }
 
 func (s *WorkflowService) ListWorkflows(ctx context.Context, page, pageSize int, keyword string, status int) ([]*Workflow, int, error) {
-	return WorkflowRepository().ListWorkflows(ctx, page, pageSize, keyword, status)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return WorkflowRepository().ListWorkflows(timeoutCtx, page, pageSize, keyword, status)
 }
 
 func (s *WorkflowService) ExecuteWorkflow(ctx context.Context, workflowId int64, trigger string) (*WorkflowExecution, error) {

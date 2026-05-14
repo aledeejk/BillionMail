@@ -23,6 +23,18 @@ const route: RouteRecordRaw = {
 			component: () => import('@/views/automation/editor.vue'),
 			meta: { title: 'Workflow Editor' },
 		},
+		{
+			path: '/workflow-view/:id',
+			name: 'WorkflowViewer',
+			component: () => import('@/views/automation/ViewFlow.vue'),
+			meta: { title: 'Workflow Viewer' },
+		},
+		{
+			path: '/executions',
+			name: 'WorkflowExecutions',
+			component: () => import('@/views/automation/Executions.vue'),
+			meta: { title: 'Workflow Runs' },
+		},
 	],
 }
 

@@ -7,6 +7,8 @@ import (
 
 	v1 "billionmail-core/api/workflow/v1"
 	workflowService "billionmail-core/internal/service/workflow"
+
+	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
@@ -167,11 +169,117 @@ func (c *ControllerV1) GetExecutions(ctx context.Context, req *v1.GetWorkflowExe
 
 func (c *ControllerV1) Execute(ctx context.Context, req *v1.ExecuteWorkflowReq) (*v1.WorkflowExecutionRes, error) {
 	workflowId := gconv.Int64(req.Id)
-	execution, err := workflowService.GetWorkflowService().ExecuteWorkflow(ctx, workflowId, req.Trigger)
+	inputData := req.InputData
+	if inputData == nil {
+		inputData = map[string]interface{}{}
+	}
+	if req.Trigger != "" {
+		inputData["trigger"] = req.Trigger
+	}
+	if req.ContactEmail != "" {
+		inputData["contact_email"] = req.ContactEmail
+		inputData["email"] = req.ContactEmail
+	}
+	execution, err := workflowService.NewExecutionEngine().ExecuteWorkflow(ctx, workflowId, req.ContactId, inputData)
 	if err != nil {
 		return nil, err
 	}
 	return toV1WorkflowExecution(execution), nil
+}
+
+func (c *ControllerV1) CreateExecutionLog(ctx context.Context, req *v1.CreateWorkflowExecutionLogReq) (*v1.WorkflowExecutionLogRes, error) {
+	workflowId := gconv.Int64(req.Id)
+	log := &workflowService.WorkflowLog{
+		WorkflowId:   workflowId,
+		ExecutionId:  req.ExecutionId,
+		ContactId:    req.ContactId,
+		NodeId:       req.NodeId,
+		NodeType:     req.NodeType,
+		Status:       req.Status,
+		Message:      req.Message,
+		StartedAt:    req.StartedAt,
+		FinishedAt:   req.FinishedAt,
+		ErrorMessage: req.ErrorMessage,
+	}
+	id, err := workflowService.GetWorkflowService().CreateExecutionLog(ctx, log)
+	if err != nil {
+		return nil, err
+	}
+	log.Id = id
+	return toV1WorkflowLog(log), nil
+}
+
+func (c *ControllerV1) GetExecutionLogs(ctx context.Context, req *v1.GetWorkflowExecutionLogsReq) (*v1.WorkflowExecutionLogListRes, error) {
+	workflowId := gconv.Int64(req.Id)
+	items, err := workflowService.GetWorkflowService().GetExecutionWalkthroughs(ctx, workflowId, workflowService.WorkflowLogFilter{
+		Contact: req.Contact,
+		Status:  req.Status,
+		From:    req.From,
+		To:      req.To,
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*v1.WorkflowExecutionWalkthroughRes, 0, len(items))
+	for _, item := range items {
+		nodes := make([]*v1.WorkflowExecutionNodeLogRes, 0, len(item.Nodes))
+		for _, node := range item.Nodes {
+			nodes = append(nodes, &v1.WorkflowExecutionNodeLogRes{
+				NodeId:       node.NodeId,
+				NodeType:     node.NodeType,
+				Status:       node.Status,
+				Timestamp:    node.Timestamp,
+				ErrorMessage: node.ErrorMessage,
+			})
+		}
+		res = append(res, &v1.WorkflowExecutionWalkthroughRes{
+			ExecutionId:  item.ExecutionId,
+			ContactId:    item.ContactId,
+			ContactEmail: item.ContactEmail,
+			Status:       item.Status,
+			StartedAt:    item.StartedAt,
+			FinishedAt:   item.FinishedAt,
+			Nodes:        nodes,
+		})
+	}
+	return &v1.WorkflowExecutionLogListRes{List: res, Total: len(res)}, nil
+}
+
+func (c *ControllerV1) GetNodeStats(ctx context.Context, req *v1.GetWorkflowNodeStatsReq) ([]workflowService.WorkflowNodeStatistic, error) {
+	return workflowService.GetWorkflowService().GetNodeStatistics(ctx, gconv.Int64(req.Id))
+}
+
+func (c *ControllerV1) GetReport(ctx context.Context, req *v1.GetWorkflowReportReq) (*v1.WorkflowReportRes, error) {
+	report, err := workflowService.GetWorkflowService().GetWorkflowReport(ctx, gconv.Int64(req.Id))
+	if err != nil {
+		return nil, err
+	}
+	return &v1.WorkflowReportRes{
+		Sent:         report.EmailsSent,
+		EmailsSent:   report.EmailsSent,
+		UniqueOpens:  report.UniqueOpens,
+		UniqueClicks: report.UniqueClicks,
+		Unsubscribes: report.Unsubscribes,
+		TrackingStub: report.TrackingStub,
+	}, nil
+}
+
+func (c *ControllerV1) ExportExecutionLogs(ctx context.Context, req *v1.ExportWorkflowExecutionLogsReq) (*struct{}, error) {
+	workflowId := gconv.Int64(req.Id)
+	content, err := workflowService.GetWorkflowService().ExportExecutionLogsCSV(ctx, workflowId, workflowService.WorkflowLogFilter{
+		Contact: req.Contact,
+		Status:  req.Status,
+		From:    req.From,
+		To:      req.To,
+	})
+	if err != nil {
+		return nil, err
+	}
+	response := g.RequestFromCtx(ctx).Response
+	response.Header().Set("Content-Type", "text/csv")
+	response.Header().Set("Content-Disposition", "attachment; filename="+workflowService.FormatWorkflowCSVFilename(workflowId))
+	response.Write(content)
+	return nil, nil
 }
 
 func toV1Workflow(workflowEntity *workflowService.Workflow) *v1.WorkflowRes {
@@ -213,6 +321,25 @@ func toV1WorkflowExecution(execution *workflowService.WorkflowExecution) *v1.Wor
 		StartedAt:    time.Unix(execution.StartedAt, 0),
 		CompletedAt:  time.Unix(execution.CompletedAt, 0),
 		ErrorMessage: execution.Error,
+	}
+}
+
+func toV1WorkflowLog(log *workflowService.WorkflowLog) *v1.WorkflowExecutionLogRes {
+	if log == nil {
+		return nil
+	}
+	return &v1.WorkflowExecutionLogRes{
+		Id:           gconv.String(log.Id),
+		WorkflowId:   gconv.String(log.WorkflowId),
+		ExecutionId:  log.ExecutionId,
+		ContactId:    log.ContactId,
+		NodeId:       log.NodeId,
+		NodeType:     log.NodeType,
+		Status:       log.Status,
+		Message:      log.Message,
+		StartedAt:    log.StartedAt,
+		FinishedAt:   log.FinishedAt,
+		ErrorMessage: log.ErrorMessage,
 	}
 }
 

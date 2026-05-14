@@ -24,11 +24,11 @@ func (s *WorkflowService) GetWorkflowStatistics(ctx context.Context, workflowId 
 		LastRunAt       int64   `json:"last_run_at"`
 	}
 
-	err := g.DB().Model("bm_workflow_executions").Ctx(ctx).
+	err := g.DB().Model("workflow_execution").Ctx(ctx).
 		Fields(`COUNT(*) AS total_executions,
-		SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS success_count,
-		SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) AS failure_count,
-		COALESCE(AVG(duration), 0) AS average_duration,
+		SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS success_count,
+		SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failure_count,
+		0 AS average_duration,
 		COALESCE(MAX(started_at), 0) AS last_run_at`).
 		Where("workflow_id", workflowId).
 		Scan(&result)

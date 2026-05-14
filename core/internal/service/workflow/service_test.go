@@ -125,9 +125,9 @@ func TestWorkflowService_CreateWorkflow(t *testing.T) {
 	service := GetWorkflowService()
 
 	tests := []struct {
-		name        string
-		workflow    *Workflow
-		wantErr     bool
+		name     string
+		workflow *Workflow
+		wantErr  bool
 	}{
 		{
 			name: "Create valid workflow",
@@ -188,22 +188,22 @@ func TestWorkflowService_GetWorkflow(t *testing.T) {
 	service := GetWorkflowService()
 
 	tests := []struct {
-		name      string
+		name       string
 		workflowId int64
-		wantNil   bool
-		wantErr   bool
+		wantNil    bool
+		wantErr    bool
 	}{
 		{
-			name:      "Get existing workflow",
+			name:       "Get existing workflow",
 			workflowId: id,
-			wantNil:   false,
-			wantErr:   false,
+			wantNil:    false,
+			wantErr:    false,
 		},
 		{
-			name:      "Get non-existing workflow",
+			name:       "Get non-existing workflow",
 			workflowId: 999,
-			wantNil:   true,
-			wantErr:   false,
+			wantNil:    true,
+			wantErr:    false,
 		},
 	}
 

@@ -115,6 +115,9 @@ instance.interceptors.response.use(
       }
       return Promise.resolve(data)
     }
+    if (code === undefined && success === undefined) {
+      return Promise.resolve(response.data)
+    }
     if (!success && msg) {
       Message.error(msg, {
         close: true,

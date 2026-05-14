@@ -30,6 +30,7 @@ import (
 	"billionmail-core/internal/service/phpfpm"
 	"billionmail-core/internal/service/public"
 	rbac2 "billionmail-core/internal/service/rbac"
+
 	//"billionmail-core/internal/service/redis_initialization"
 	"billionmail-core/internal/service/rspamd"
 	"billionmail-core/internal/service/timers"
@@ -266,6 +267,16 @@ var (
 					workflow.NewV1(),
 					workflow.NewEditorV1(),
 				)
+				analyticsController := workflow.NewAnalyticsController()
+				group.GET("/workflow/:id/execution-log", analyticsController.GetExecutionLog)
+				group.GET("/workflow/:id/report", analyticsController.GetReport)
+				group.GET("/workflow/:id/export", analyticsController.ExportExecutionLog)
+				workflowEditorController := workflow.NewEditorV1()
+				group.POST("/workflow/:id/rollback/:version", workflowEditorController.Rollback)
+				group.DELETE("/workflow/:id/versions/:version", workflowEditorController.DeleteVersion)
+				webhookController := workflow.NewWebhookController()
+				group.POST("/webhook/trigger/:workflow_id", webhookController.Trigger)
+				group.POST("/workflow/trigger/:id", webhookController.Trigger)
 			})
 
 			// Add PHP-FPM middleware

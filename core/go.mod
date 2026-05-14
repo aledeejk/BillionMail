@@ -7,7 +7,6 @@ toolchain go1.23.2
 require (
 	github.com/GehirnInc/crypt v0.0.0-20230320061759-8cc1b52080c5
 	github.com/docker/docker v28.0.2+incompatible
-	github.com/fsnotify/fsnotify v1.8.0
 	github.com/g0rbe/go-chattr v1.0.1
 	github.com/go-acme/lego/v4 v4.22.2
 	github.com/gogf/gf v1.16.9
@@ -55,6 +54,7 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
