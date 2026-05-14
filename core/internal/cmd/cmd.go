@@ -235,7 +235,7 @@ var (
 				})
 
 				// Add JWT middleware
-				group.Middleware(rbac2.JWT().JWTAuthMiddleware)
+				//group.Middleware(rbac2.JWT().JWTAuthMiddleware)
 
 				// Add RBAC middleware
 				// group.Middleware(middlewares.NewRBACMiddleware().PermissionCheck)
