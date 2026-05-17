@@ -168,7 +168,6 @@ type WorkflowStatsRes struct {
 	ConversionRate float64 `json:"conversion_rate"`
 }
 
-// Editor API types
 type GetWorkflowEditorReq struct {
 	g.Meta `path:"/workflow/{id}/editor" method:"get" tags:"Workflow" summary:"Get workflow editor data"`
 	Id     string `json:"id" in:"path" v:"required" dc:"Workflow ID"`

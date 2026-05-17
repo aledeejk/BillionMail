@@ -1,18 +1,17 @@
 <template>
   <div class="workflow-editor">
     <div class="editor-header">
-      <button @click="router.back()" class="btn-secondary">← Back</button>
+      <button class="btn-secondary" @click="router.back()">← Back</button>
       <h1>Workflow Editor: {{ workflow?.name }}</h1>
       <div class="toolbar-buttons">
-        <button type="button" @click="showTestModal = true" class="btn-secondary">Test</button>
-        <button type="button" @click="runWorkflowExecution" class="btn-secondary">Test execution</button>
-        <button type="button" @click="clearCanvas" class="btn-danger">Clear All</button>
-        <button type="button" @click="saveWorkflow()" class="btn-primary">Save</button>
+        <button type="button" class="btn-secondary" @click="showTestModal = true">Test</button>
+        <button type="button" class="btn-secondary" @click="runWorkflowExecution">Test execution</button>
+        <button type="button" class="btn-danger" @click="clearCanvas">Clear All</button>
+        <button type="button" class="btn-primary" @click="saveWorkflow()">Save</button>
       </div>
     </div>
 
     <div class="editor-content">
-      <!-- Node Palette -->
       <div class="node-palette">
         <h3>Available Nodes</h3>
         <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'trigger')">
@@ -57,21 +56,20 @@
         </div>
       </div>
 
-      <!-- Vue Flow Canvas -->
       <div class="flow-canvas">
         <VueFlow
           v-model:nodes="nodes"
           v-model:edges="edges"
-          @drop="onDrop"
-          @dragover="onDragOver"
-          @connect="onConnect"
-          @node-click="onNodeClick"
-          @edge-click="onEdgeClick"
           :fit-view-on-init="true"
           :nodes-draggable="true"
           :nodes-connectable="true"
           :edges-updatable="true"
           :delete-key-code="['Delete', 'Backspace']"
+          @drop="onDrop"
+          @dragover="onDragOver"
+          @connect="onConnect"
+          @node-click="onNodeClick"
+          @edge-click="onEdgeClick"
         >
           <Background />
           <Controls />
@@ -709,8 +707,8 @@ const onDrop = (event: DragEvent) => {
     try {
       const data = JSON.parse(payload)
       nodeType = data.type || nodeType
-    } catch {
-      // ignore malformed data
+    } catch (e) {
+      console.warn('Failed to parse drag payload:', e)
     }
   }
 

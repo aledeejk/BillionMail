@@ -1,10 +1,11 @@
 package email_template
 
 import (
-	"billionmail-core/api/email_template/v1"
+	v1 "billionmail-core/api/email_template/v1"
 	"context"
-	"github.com/gogf/gf/v2/frame/g"
 	"time"
+
+	"github.com/gogf/gf/v2/frame/g"
 )
 
 // CheckTemplateNameExists
@@ -104,7 +105,6 @@ func GetTemplatesWithPage(ctx context.Context, page, pageSize int, keyword strin
 	if err != nil {
 		return 0, nil, err
 	}
-	//selectFields := "id, temp_name, add_type, create_time, update_time"
 
 	// Pagination query
 	list = make([]*v1.EmailTemplate, 0)
@@ -124,14 +124,11 @@ func GetTemplatesByID(ctx context.Context, id int) (*v1.EmailTemplate, error) {
 	return template, err
 }
 
-// GetTemplatesAll  id name
 func GetTemplatesAll(ctx context.Context) ([]*v1.EmailTemplate, error) {
 	var templates []*v1.EmailTemplate
-	//selectFields := "id, temp_name"
 
 	err := g.DB().Model("email_templates").
 		Ctx(ctx).
-		//Fields(selectFields).
 		Order("create_time DESC").
 		Scan(&templates)
 	return templates, err

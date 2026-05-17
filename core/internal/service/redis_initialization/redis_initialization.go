@@ -21,7 +21,7 @@ func InitRedis() (err error) {
 	}
 
 	host := public.MustGetDockerEnv("REDIS_HOST", "127.0.0.1")
-	port := public.MustGetDockerEnv("REDIS_PORT", "26379")
+	port := public.MustGetDockerEnv("REDIS_PORT", "6379")
 	if public.IsRunningInContainer() {
 		host = public.MustGetDockerEnv("REDIS_HOST", "redis")
 	}

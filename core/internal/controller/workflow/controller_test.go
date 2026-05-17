@@ -342,7 +342,7 @@ func TestControllerV1_List(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/workflow", nil)
 		w := httptest.NewRecorder()
 
-		handler := func(w http.ResponseWriter, r *http.Request) {
+		handler := func(w http.ResponseWriter, _ *http.Request) {
 			workflows, total, err := mockService.ListWorkflows(context.Background(), 1, 10, "", -1)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

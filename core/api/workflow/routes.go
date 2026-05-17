@@ -13,19 +13,6 @@ func RegisterRoutes(router *ghttp.RouterGroup) {
 		analyticsController := workflowController.NewAnalyticsController()
 		webhookController := workflowController.NewWebhookController()
 
-		// Workflow endpoints
-		// POST   /api/workflow
-		// GET    /api/workflow
-		// GET    /api/workflow/{id}
-		// PUT    /api/workflow/{id}
-		// DELETE /api/workflow/{id}
-		// POST   /api/workflow/{id}/duplicate
-		// POST   /api/workflow/{id}/toggle
-		// POST   /api/workflow/{id}/execute
-		// GET    /api/workflow/{id}/stats
-		// GET    /api/workflow/{id}/versions
-		// DELETE /api/workflow/{id}/versions/{version}
-		// GET    /api/workflow/{id}/executions
 		group.Bind(workflowV1Controller)
 		group.Bind(workflowEditorController)
 		group.GET("/:id/editor", workflowEditorController.GetEditor)

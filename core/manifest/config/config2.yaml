@@ -1,6 +1,6 @@
 # https://goframe.org/docs/web/server-config-file-template
 server:
-  address:     ":80"
+  address:     ":8081"
   httpsPort: 0
   readTimeout: "600s"
   writeTimeout: "0"
@@ -53,6 +53,14 @@ server:
   # Version
   version: "4.9.0"
 
+workflow:
+  smtp:
+    host: "localhost"
+    port: "1025"
+    username: ""
+    password: ""
+    from: "noreply@billionmail.local"
+
 viewer:
   Paths: ["template"]
 
@@ -75,10 +83,4 @@ logger:
   stdoutColorDisabled: true # Turn off the color printing of the terminal. Default is on
   writerColorEnable: false # Whether the log file has color. Default is false, indicating no color
 
-workflow:
-  smtp:
-    host: "localhost"
-    port: "1025"
-    username: ""
-    password: ""
-    from: "workflow@billionmail.com"
+

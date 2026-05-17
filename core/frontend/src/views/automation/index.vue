@@ -10,7 +10,6 @@
       </button>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
       <button
         v-for="tab in tabs"
@@ -23,13 +22,11 @@
       </button>
     </div>
 
-    <!-- Loading State -->
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
       <p>Loading workflows...</p>
     </div>
 
-    <!-- Workflows List -->
     <div v-else class="workflows-grid">
       <div v-if="filteredWorkflows.length === 0" class="empty-state">
         <p>No workflows {{ activeTab !== 'All' ? 'in ' + activeTab.toLowerCase() : 'yet' }}</p>
@@ -72,8 +69,8 @@
           <button class="btn-sm btn-secondary" @click="editWorkflow(workflow)">
             ✏️ Edit
           </button>
-          <button class="btn-sm btn-success" @click="runWorkflow(workflow.id)">
-            ▶️ Run
+          <button class="btn-sm btn-success" :disabled="executingWorkflows.includes(workflow.id)" @click="runWorkflow(workflow.id)">
+            {{ executingWorkflows.includes(workflow.id) ? '⏳ Running...' : '▶️ Run' }}
           </button>
           <button
             class="btn-sm btn-secondary"
@@ -91,7 +88,6 @@
       </div>
     </div>
 
-    <!-- Stats Modal -->
     <div v-if="showStatsModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -152,7 +148,6 @@
       </div>
     </div>
 
-    <!-- Execution Log Modal -->
     <div v-if="showExecutionLogModal" class="modal execution-log-modal">
       <div class="modal-content modal-wide">
         <div class="modal-header">
@@ -199,7 +194,6 @@
       </div>
     </div>
 
-    <!-- Reports Modal -->
     <div v-if="showReportModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -217,7 +211,6 @@
       </div>
     </div>
 
-    <!-- Versions Modal -->
     <div v-if="showVersionsModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -257,7 +250,6 @@
       </div>
     </div>
 
-    <!-- Create/Edit Dialog -->
     <div v-if="showCreateDialog" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -304,8 +296,8 @@ import { workflowApi } from '@/api/workflow';
 
 const router = useRouter();
 
-// State
 const workflows = ref<Workflow[]>([]);
+const executingWorkflows = ref<string[]>([]);
 const loading = ref(false);
 const activeTab = ref('All');
 const tabs = ref(['All', 'Active', 'Inactive']);
@@ -335,7 +327,6 @@ const formData = ref({
   description: '',
 });
 
-// Computed
 const filteredWorkflows = computed(() => {
   if (activeTab.value === 'Active') {
     return workflows.value.filter((w) => w.isActive);
@@ -345,7 +336,6 @@ const filteredWorkflows = computed(() => {
   return workflows.value;
 });
 
-// Methods
 const loadWorkflows = async () => {
   loading.value = true;
   const data = await workflowApi.getWorkflows();
@@ -433,9 +423,11 @@ const duplicateWorkflow = async (id: string) => {
 };
 
 const runWorkflow = async (id: string) => {
+  if (executingWorkflows.value.includes(id)) return;
+  executingWorkflows.value.push(id);
   try {
     const email = prompt('Enter contact email for test run:', 'test@example.com');
-    if (!email) return;
+    if (!email) { executingWorkflows.value = executingWorkflows.value.filter(x => x !== id); return; }
     
     const inputDataStr = prompt('Enter test data (JSON):', '{"email_opened": true}');
     let inputData: Record<string, any> = {};
@@ -464,6 +456,8 @@ const runWorkflow = async (id: string) => {
     console.error('Failed to run workflow:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     alert(`❌ Failed to run workflow: ${errorMessage}`);
+  } finally {
+    executingWorkflows.value = executingWorkflows.value.filter(x => x !== id);
   }
 };
 
@@ -573,28 +567,13 @@ const deleteWorkflowVersion = async (id: string, version: number) => {
 const rollbackWorkflow = async (id: string, version: number) => {
   if (!confirm(`Rollback to version ${version}?`)) return;
   try {
-    const loadingDiv = document.createElement('div');
-    loadingDiv.textContent = 'Rolling back... Please wait.';
-    loadingDiv.style.position = 'fixed';
-    loadingDiv.style.top = '50%';
-    loadingDiv.style.left = '50%';
-    loadingDiv.style.transform = 'translate(-50%, -50%)';
-    loadingDiv.style.background = '#000';
-    loadingDiv.style.color = '#fff';
-    loadingDiv.style.padding = '1rem 2rem';
-    loadingDiv.style.borderRadius = '8px';
-    loadingDiv.style.zIndex = '9999';
-    document.body.appendChild(loadingDiv);
-
     await workflowApi.rollbackWorkflow(id, version);
-    
-    window.location.reload();
+    selectedVersions.value = await workflowApi.getWorkflowVersions(id);
+    workflows.value = await workflowApi.getWorkflows();
+    showVersionsModal.value = false;
   } catch (error) {
     console.error('Failed to rollback workflow:', error);
     alert('Failed to rollback workflow');
-
-    const loadingDiv = document.querySelector('div[style*="position: fixed"]');
-    if (loadingDiv) loadingDiv.remove();
   }
 };
 
@@ -614,7 +593,6 @@ const formatDate = (dateString: string) => {
   return date.toLocaleDateString();
 };
 
-// Lifecycle
 onMounted(() => {
   loadWorkflows();
 });

@@ -35,7 +35,17 @@ func (c *WebhookController) Trigger(r *ghttp.Request) {
 	}
 	payload["trigger"] = "webhook"
 
-	execution, err := workflowService.NewExecutionEngine().ExecuteWorkflow(r.Context(), workflowId, gconv.Int64(payload["contact_id"]), payload)
+	engine := workflowService.GetExecutionEngine()
+	if engine.HasQueue() {
+		if err := engine.DispatchExecution(r.Context(), workflowId, gconv.Int64(payload["contact_id"]), payload); err != nil {
+			r.Response.WriteJsonExit(g.Map{"code": 500, "msg": err.Error()})
+			return
+		}
+		r.Response.WriteJsonExit(g.Map{"status": "queued"})
+		return
+	}
+
+	execution, err := engine.ExecuteWorkflow(r.Context(), workflowId, gconv.Int64(payload["contact_id"]), payload)
 	if err != nil {
 		r.Response.WriteJsonExit(g.Map{"code": 500, "msg": err.Error()})
 		return

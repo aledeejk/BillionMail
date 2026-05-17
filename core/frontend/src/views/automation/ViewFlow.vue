@@ -85,6 +85,7 @@ const getNodeLabel = (type: string) => {
     case 'trigger':
       return 'Trigger'
     case 'send-email':
+    case 'email':
       return 'Send Email'
     case 'delay':
       return 'Delay'
@@ -92,32 +93,46 @@ const getNodeLabel = (type: string) => {
       return 'Condition'
     case 'action':
       return 'Action'
+    case 'split':
+      return 'A/B Split'
     default:
-      return type
+      return type || 'Node'
   }
 }
 
 const getNodeTitle = (node: any) => getNodeLabel(node.type)
 
 const getNodeDetails = (node: any) => {
-  const config = node.config || {}
+  const config = (typeof node.config === 'string' ? JSON.parse(node.config) : node.config) || {}
 
   if (node.type === 'trigger') return config.triggerType || config.event || 'group subscription'
-  if (node.type === 'send-email') return config.templateId || config.template || 'Welcome letter'
+  if (node.type === 'send-email' || node.type === 'email')
+    return config.templateId ? `Template #${config.templateId}` : (config.template || '')
   if (node.type === 'delay') return `${config.duration || 3} ${config.unit || 'days'}`
-  if (node.type === 'condition') return config.condition || config.operator || 'is the email open?'
-  if (node.type === 'action') return config.action || config.actionType || 'add the onboarding tag'
+  if (node.type === 'condition') return config.condition || config.operator || 'condition'
+  if (node.type === 'action') return `${config.actionType || 'action'}${config.value ? ': ' + config.value : ''}`
+  if (node.type === 'split') return `A: ${config.branchA ?? 50}% / B: ${config.branchB ?? 50}%`
 
   return Object.keys(config).length > 0 ? JSON.stringify(config) : ''
 }
 
 const loadWorkflowFlow = async () => {
+  const id = route.params.id as string
+  if (!id) {
+    console.error('ViewFlow: missing workflow id in route params')
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
-    const data = await workflowApi.getWorkflowEditor(route.params.id as string)
-    workflow.value = data.workflow
-    nodes.value = data.nodes || []
-    connections.value = data.connections || []
+    const res = await workflowApi.getWorkflowEditor(id)
+    const data = (res as any)?.data ?? res
+    workflow.value = data?.workflow ?? null
+    nodes.value = (data?.nodes || []).map((n: any) => ({
+      ...n,
+      config: typeof n.config === 'string' ? (() => { try { return JSON.parse(n.config) } catch { return {} } })() : (n.config || {}),
+    }))
+    connections.value = data?.connections || []
   } catch (error) {
     console.error('Failed to load workflow flow:', error)
   } finally {

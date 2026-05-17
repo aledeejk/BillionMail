@@ -38,7 +38,6 @@ var (
 	editorServiceInstance *ServiceEditor
 )
 
-// WorkflowEditor returns the singleton instance of ServiceEditor.
 func WorkflowEditor() *ServiceEditor {
 	if editorServiceInstance == nil {
 		editorServiceInstance = &ServiceEditor{}
@@ -46,7 +45,6 @@ func WorkflowEditor() *ServiceEditor {
 	return editorServiceInstance
 }
 
-// GetEditorData retrieves workflow editor data including nodes and connections.
 func (s *ServiceEditor) GetEditorData(ctx context.Context, workflowId string) (*v1.GetWorkflowEditorRes, error) {
 	id := gconv.Int64(workflowId)
 	if id <= 0 {
@@ -163,7 +161,6 @@ func (s *ServiceEditor) DeleteWorkflowVersion(ctx context.Context, workflowId st
 	return err
 }
 
-// UpdateEditorData replaces workflow editor nodes and connections transactionally.
 func (s *ServiceEditor) UpdateEditorData(ctx context.Context, workflowId string, nodes []*v1.WorkflowNodeItem, connections []*v1.WorkflowConnection) error {
 	id := gconv.Int64(workflowId)
 	if id <= 0 {
@@ -253,7 +250,6 @@ func (s *ServiceEditor) UpdateEditorData(ctx context.Context, workflowId string,
 	})
 }
 
-// RollbackEditorData restores workflow nodes and connections from a specific version snapshot.
 func (s *ServiceEditor) RollbackEditorData(ctx context.Context, workflowId string, version int) (*v1.GetWorkflowEditorRes, error) {
 	fmt.Println("[ROLLBACK] no version increment")
 

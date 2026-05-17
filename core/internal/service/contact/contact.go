@@ -540,13 +540,12 @@ func BatchCreateContactsWithOverwrite(ctx context.Context, contacts []*entity.Co
 }
 
 func GfMd5Short() string {
-	str := fmt.Sprintf("%s_%d_%d", time.Now().UnixNano(), rand.Intn(100000))
+	str := fmt.Sprintf("%d_%d", time.Now().UnixNano(), rand.Intn(100000))
 	return gmd5.MustEncryptString(str)[:12]
 }
 
-// AddContactToGroup adds a contact to a specified group if it doesn't already exist.
 func AddContactToGroup(ctx context.Context, email string, groupId int) (*entity.Contact, error) {
-	// Check if the contact already exists in the group
+
 	var existingContact entity.Contact
 	err := g.DB().Model("bm_contacts").Ctx(ctx).Where("email", email).Where("group_id", groupId).Scan(&existingContact)
 	if err != nil && err != sql.ErrNoRows {
@@ -554,12 +553,10 @@ func AddContactToGroup(ctx context.Context, email string, groupId int) (*entity.
 		return nil, err
 	}
 
-	// If contact already exists, return it
 	if existingContact.Id > 0 {
 		return &existingContact, nil
 	}
 
-	// If contact does not exist, create a new one
 	newContact := &entity.Contact{
 		Email:      email,
 		GroupId:    groupId,

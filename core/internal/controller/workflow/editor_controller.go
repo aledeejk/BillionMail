@@ -10,7 +10,6 @@ import (
 	"billionmail-core/utility/types/api_v1"
 
 	"github.com/gogf/gf/v2/errors/gerror"
-	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/net/ghttp"
 )
 
@@ -82,8 +81,7 @@ func (c *ControllerEditorV1) Rollback(r *ghttp.Request) {
 		return
 	}
 
-	// Выполняем rollback
-	_, err := workflowService.WorkflowEditor().RollbackEditorData(r.Context(), id, version)
+	editorData, err := workflowService.WorkflowEditor().RollbackEditorData(r.Context(), id, version)
 	if err != nil {
 		r.Response.WriteJsonExit(api_v1.StandardRes{
 			Success: false,
@@ -93,32 +91,11 @@ func (c *ControllerEditorV1) Rollback(r *ghttp.Request) {
 		return
 	}
 
-	// Загружаем обновлённый workflow из БД (с новой версией и датой)
-	var workflowData struct {
-		Id          string `json:"id"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		IsActive    bool   `json:"is_active"`
-		Version     int    `json:"version"`
-		UpdatedAt   int64  `json:"updated_at"`
-	}
-	err = g.DB().Model("workflow").Where("id", id).Scan(&workflowData)
-	if err != nil {
-		r.Response.WriteJsonExit(api_v1.StandardRes{
-			Success: false,
-			Code:    500,
-			Msg:     "Failed to load updated workflow",
-		})
-		return
-	}
-
 	r.Response.WriteJsonExit(api_v1.StandardRes{
 		Success: true,
 		Code:    0,
 		Msg:     "Workflow rolled back successfully",
-		Data: map[string]interface{}{
-			"workflow": workflowData,
-		},
+		Data:    editorData,
 	})
 }
 

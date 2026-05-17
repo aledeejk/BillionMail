@@ -137,16 +137,28 @@ func (s *ExecutionService) GetReport(ctx context.Context, workflowId int64) (*Re
 		report.Sent = count
 	}
 	if tableExists(ctx, "mail_open") {
-		count, _ := g.DB().Model("mail_open").Ctx(ctx).Fields("COUNT(DISTINCT contact_id)").Count()
-		report.UniqueOpens = count
+		var opens int
+		_ = g.DB().Ctx(ctx).Raw(
+			`SELECT COUNT(DISTINCT COALESCE(NULLIF(contact_id,''), NULLIF(email,''))) FROM mail_open WHERE workflow_id = ?`,
+			workflowId,
+		).Scan(&opens)
+		report.UniqueOpens = opens
 	}
 	if tableExists(ctx, "mail_click") {
-		count, _ := g.DB().Model("mail_click").Ctx(ctx).Fields("COUNT(DISTINCT contact_id)").Count()
-		report.UniqueClicks = count
+		var clicks int
+		_ = g.DB().Ctx(ctx).Raw(
+			`SELECT COUNT(DISTINCT COALESCE(NULLIF(contact_id,''), NULLIF(email,''))) FROM mail_click WHERE workflow_id = ?`,
+			workflowId,
+		).Scan(&clicks)
+		report.UniqueClicks = clicks
 	}
 	if tableExists(ctx, "unsubscribe_records") {
-		count, _ := g.DB().Model("unsubscribe_records").Ctx(ctx).Count()
-		report.Unsubscribes = count
+		var unsubs int
+		_ = g.DB().Ctx(ctx).Raw(
+			`SELECT COUNT(DISTINCT COALESCE(NULLIF(contact_id,''), NULLIF(email,''))) FROM unsubscribe_records WHERE workflow_id = ?`,
+			workflowId,
+		).Scan(&unsubs)
+		report.Unsubscribes = unsubs
 	}
 	return report, nil
 }

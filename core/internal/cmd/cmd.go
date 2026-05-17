@@ -30,6 +30,8 @@ import (
 	"billionmail-core/internal/service/phpfpm"
 	"billionmail-core/internal/service/public"
 	rbac2 "billionmail-core/internal/service/rbac"
+	wfService "billionmail-core/internal/service/workflow"
+	"billionmail-core/internal/service/workflow/queue"
 
 	//"billionmail-core/internal/service/redis_initialization"
 	"billionmail-core/internal/service/rspamd"
@@ -57,7 +59,7 @@ var (
 		Brief: "start http server",
 		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
 			if v := parser.GetOpt("version"); v != nil {
-				fmt.Println(fmt.Sprintf("v%s", g.Cfg().MustGet(ctx, "server.version", "0.1").String()))
+				fmt.Printf("v%s\n", g.Cfg().MustGet(ctx, "server.version", "0.1").String())
 				return nil
 			}
 
@@ -68,6 +70,50 @@ var (
 				g.Log().Error(ctx, "initialize databases failed ", err)
 				return err
 			}
+
+			// Init Redis queue and distributed-lock engine
+			redisAddr := g.Cfg().MustGet(ctx, "redis.addr", "127.0.0.1:6379").String()
+			workerCount := parser.GetOpt("workers", "4").Int()
+			rq, rqErr := queue.NewRedisQueue(redisAddr)
+			if rqErr != nil {
+				g.Log().Errorf(ctx, "[workflow] Redis unavailable at %s: %v — aborting (fail-fast)", redisAddr, rqErr)
+				return rqErr
+			}
+			wfService.InitEngine(rq)
+			g.Log().Infof(ctx, "[workflow] Redis queue ready at %s, starting %d worker(s)", redisAddr, workerCount)
+
+			workerCtx, workerCancel := context.WithCancel(ctx)
+			defer workerCancel()
+
+			go rq.RunWorkers(workerCtx, workerCount, func(taskCtx context.Context, task queue.ExecutionTask) error {
+				inputData := task.InputData
+				if inputData == nil {
+					inputData = map[string]interface{}{}
+				}
+				if task.IdempotencyKey != "" {
+					inputData["idempotency_key"] = task.IdempotencyKey
+				}
+				_, execErr := wfService.GetExecutionEngine().ExecuteWorkflow(
+					taskCtx,
+					task.WorkflowId,
+					task.ContactId,
+					inputData,
+				)
+				return execErr
+			})
+
+			go func() {
+				ticker := time.NewTicker(30 * time.Second)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-ticker.C:
+						rq.PrintMetrics(workerCtx)
+					case <-workerCtx.Done():
+						return
+					}
+				}
+			}()
 
 			// Init Redis
 			//err = redis_initialization.InitRedis()

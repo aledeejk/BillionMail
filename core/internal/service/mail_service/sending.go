@@ -9,8 +9,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/gogf/gf/util/grand"
-	"github.com/gogf/gf/v2/frame/g"
 	"io"
 	"mime"
 	"mime/quotedprintable"
@@ -19,6 +17,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gogf/gf/util/grand"
+	"github.com/gogf/gf/v2/frame/g"
 )
 
 type Message struct {
@@ -250,17 +251,17 @@ func (e *EmailSender) connectPlain() error {
 		}
 	}
 
-	var auth smtp.Auth
-
-	if e.Port == "25" {
-		auth = &customAuth{e.UserName, e.Password}
-	} else {
-		auth = smtp.PlainAuth("", e.UserName, e.Password, e.Host)
-	}
-
-	if err = client.Auth(auth); err != nil {
-		client.Close()
-		return fmt.Errorf("SMTP auth: %w", err)
+	if e.UserName != "" {
+		var auth smtp.Auth
+		if e.Port == "25" {
+			auth = &customAuth{e.UserName, e.Password}
+		} else {
+			auth = smtp.PlainAuth("", e.UserName, e.Password, e.Host)
+		}
+		if err = client.Auth(auth); err != nil {
+			client.Close()
+			return fmt.Errorf("SMTP auth: %w", err)
+		}
 	}
 
 	e.client = client
@@ -447,13 +448,15 @@ func (e *EmailSender) isSecure() bool {
 	// usually,
 	// port 465 is used for SMTP with SSL (implicit TLS)
 	// port 587 is used for SMTP with STARTTLS (explicit TLS)
-	if e.Port == "465" {
+	switch e.Port {
+	case "465":
 		return true
-	} else if e.Port == "587" {
+	case "587":
 		// We will use STARTTLS if the port is 587
 		return false
+	default:
+		return false
 	}
-	return false
 }
 
 // IsConfigured check if Email notification is configured

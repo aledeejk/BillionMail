@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	v1 "billionmail-core/api/workflow/v1"
@@ -176,11 +177,29 @@ func (c *ControllerV1) Execute(ctx context.Context, req *v1.ExecuteWorkflowReq) 
 	if req.Trigger != "" {
 		inputData["trigger"] = req.Trigger
 	}
-	if req.ContactEmail != "" {
-		inputData["contact_email"] = req.ContactEmail
-		inputData["email"] = req.ContactEmail
+	contactEmail := req.ContactEmail
+	if contactEmail == "" {
+		contactEmail = gconv.String(inputData["contact_email"])
+		if contactEmail == "" {
+			contactEmail = gconv.String(inputData["email"])
+		}
 	}
-	execution, err := workflowService.NewExecutionEngine().ExecuteWorkflow(ctx, workflowId, req.ContactId, inputData)
+	if contactEmail != "" {
+		inputData["contact_email"] = contactEmail
+		inputData["email"] = contactEmail
+	}
+	if gconv.String(inputData["idempotency_key"]) == "" {
+		minuteWindow := time.Now().Unix() / 60
+		inputData["idempotency_key"] = fmt.Sprintf("%d:%s:%d", workflowId, contactEmail, minuteWindow)
+	}
+	engine := workflowService.GetExecutionEngine()
+	if engine.HasQueue() {
+		if dispatchErr := engine.DispatchExecution(ctx, workflowId, req.ContactId, inputData); dispatchErr != nil {
+			return nil, dispatchErr
+		}
+		return &v1.WorkflowExecutionRes{Status: 0}, nil
+	}
+	execution, err := engine.ExecuteWorkflow(ctx, workflowId, req.ContactId, inputData)
 	if err != nil {
 		return nil, err
 	}
