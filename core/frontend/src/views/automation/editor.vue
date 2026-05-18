@@ -206,7 +206,7 @@
                   </select>
                   <input v-model="condition.value" type="text" placeholder="Value" />
                   <input v-if="condition.operator === 'between'" v-model="condition.valueTo" type="text" placeholder="To" />
-                  <button type="button" class="btn-danger" @click="removeCondition(nodeForm.config, index)">Delete</button>
+                  <button type="button" class="btn-danger" @click="removeCondition(nodeForm.config, Number(index))">Delete</button>
                 </div>
 
                 <ConditionGroupEditor
@@ -215,7 +215,7 @@
                   :group="group"
                   :condition-fields="conditionFields"
                   :condition-operators="conditionOperators"
-                  @remove="removeGroup(nodeForm.config, index)"
+                  @remove="removeGroup(nodeForm.config, Number(index))"
                 />
 
                 <div class="condition-actions">

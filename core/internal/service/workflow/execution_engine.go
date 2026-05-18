@@ -202,11 +202,12 @@ func (e *ExecutionEngine) ExecuteWorkflow(ctx context.Context, workflowId int64,
 	}
 
 	completedAt := time.Now().Unix()
-	if status == "completed" {
+	switch status {
+	case "completed":
 		execution.Status = 2
-	} else if status == "paused" {
+	case "paused":
 		execution.Status = 4
-	} else {
+	default:
 		execution.Status = 3
 		execution.Error = errMessage
 	}

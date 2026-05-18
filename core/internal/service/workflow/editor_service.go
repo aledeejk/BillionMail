@@ -422,7 +422,7 @@ func (s *ServiceEditor) RollbackEditorData(ctx context.Context, workflowId strin
 	return s.GetEditorData(ctx, workflowId)
 }
 
-func (s *ServiceEditor) createSnapshotVersion(ctx context.Context, tx gdb.TX, workflowId int64, version int, nodes []*v1.WorkflowNodeItem, connections []*v1.WorkflowConnection, now int64) error {
+func (s *ServiceEditor) createSnapshotVersion(_ context.Context, tx gdb.TX, workflowId int64, version int, nodes []*v1.WorkflowNodeItem, connections []*v1.WorkflowConnection, now int64) error {
 	snapshotJSON, err := json.Marshal(editorSnapshot{Nodes: nodes, Connections: connections})
 	if err != nil {
 		return err
