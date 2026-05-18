@@ -569,7 +569,7 @@ const saveNodeConfig = () => {
         config: { ...nodeForm.value.config },
         label: getNodeConfigLabel(nodeForm.value.type, nodeForm.value.config),
       },
-    }
+    } as any
   })
   closeNodeModal()
 }
