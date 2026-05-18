@@ -113,19 +113,9 @@ func (c *ControllerV1) Duplicate(ctx context.Context, req *v1.DuplicateWorkflowR
 
 func (c *ControllerV1) Toggle(ctx context.Context, req *v1.ToggleWorkflowReq) (*struct{}, error) {
 	workflowId := gconv.Int64(req.Id)
-	workflowEntity, err := workflowService.GetWorkflowService().GetWorkflow(ctx, workflowId)
-	if err != nil {
+	if err := workflowService.GetWorkflowService().ToggleWorkflow(ctx, workflowId); err != nil {
 		return nil, err
 	}
-	if workflowEntity == nil {
-		return nil, errors.New("workflow not found")
-	}
-
-	workflowEntity.Status = 1 - workflowEntity.Status
-	if err := workflowService.GetWorkflowService().UpdateWorkflow(ctx, workflowEntity); err != nil {
-		return nil, err
-	}
-
 	return &struct{}{}, nil
 }
 

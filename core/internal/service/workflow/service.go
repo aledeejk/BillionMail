@@ -116,6 +116,17 @@ func (s *WorkflowService) UpdateWorkflow(ctx context.Context, workflow *Workflow
 	return err
 }
 
+func (s *WorkflowService) ToggleWorkflow(ctx context.Context, workflowId int64) error {
+	current, err := WorkflowRepository().GetWorkflowById(ctx, workflowId)
+	if err != nil {
+		return err
+	}
+	if current == nil {
+		return gerror.Newf("workflow %d not found", workflowId)
+	}
+	return WorkflowRepository().UpdateWorkflowStatus(ctx, workflowId, 1-current.Status)
+}
+
 func (s *WorkflowService) GetWorkflow(ctx context.Context, workflowId int64) (*Workflow, error) {
 	return WorkflowRepository().GetWorkflowById(ctx, workflowId)
 }

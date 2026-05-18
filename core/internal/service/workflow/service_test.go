@@ -113,6 +113,13 @@ func (m *mockWorkflowRepository) CreateLog(ctx context.Context, log *WorkflowLog
 func (m *mockWorkflowRepository) ListLogs(ctx context.Context, workflowId int64, page, pageSize int) ([]*WorkflowLog, int, error) {
 	return []*WorkflowLog{}, 0, nil
 }
+func (m *mockWorkflowRepository) UpdateWorkflowStatus(ctx context.Context, id int64, status int) error {
+	if wf, exists := m.workflows[id]; exists {
+		wf.Status = status
+		wf.UpdatedAt = time.Now().Unix()
+	}
+	return nil
+}
 
 func TestWorkflowService_CreateWorkflow(t *testing.T) {
 	mockRepo := newMockWorkflowRepository()

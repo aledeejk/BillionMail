@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"time"
 
 	"github.com/gogf/gf/v2/frame/g"
 )
@@ -9,6 +10,7 @@ import (
 type IWorkflowRepository interface {
 	CreateWorkflow(ctx context.Context, workflow *Workflow) (int64, error)
 	UpdateWorkflow(ctx context.Context, workflow *Workflow) error
+	UpdateWorkflowStatus(ctx context.Context, id int64, status int) error
 	DeleteWorkflow(ctx context.Context, workflowId int64) error
 	GetWorkflowById(ctx context.Context, workflowId int64) (*Workflow, error)
 	ListWorkflows(ctx context.Context, page, pageSize int, keyword string, status int) ([]*Workflow, int, error)
@@ -65,6 +67,14 @@ func (r *workflowRepository) UpdateWorkflow(ctx context.Context, workflow *Workf
 	}
 
 	_, err := g.DB().Model("workflow").Ctx(ctx).Where("id", workflow.Id).Data(data).Update()
+	return err
+}
+
+func (r *workflowRepository) UpdateWorkflowStatus(ctx context.Context, id int64, status int) error {
+	_, err := g.DB().Model("workflow").Ctx(ctx).Where("id", id).Data(g.Map{
+		"status":     status,
+		"updated_at": time.Now().Unix(),
+	}).Update()
 	return err
 }
 
