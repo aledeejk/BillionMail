@@ -2,7 +2,6 @@ package mail_service
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/gogf/gf/v2/frame/g"
@@ -51,17 +50,19 @@ func NewConfigEmailSender(ctx context.Context) (*EmailSender, error) {
 	password := g.Cfg().MustGet(ctx, "workflow.smtp.password").String()
 	from := g.Cfg().MustGet(ctx, "workflow.smtp.from").String()
 
-	g.Log().Debugf(ctx, "workflow SMTP config: host=%q port=%q username=%q from=%q", host, port, username, from)
-
 	if host == "" {
-		return nil, errors.New("workflow SMTP not configured: set workflow.smtp.host in config.yaml")
+		host = "localhost"
+		port = "1025"
+		g.Log().Debugf(ctx, "workflow SMTP not configured, falling back to MailHog at %s:%s", host, port)
 	}
 	if from == "" {
 		from = username
 	}
 	if from == "" {
-		return nil, errors.New("workflow SMTP from address not configured")
+		from = "noreply@billionmail.local"
 	}
+
+	g.Log().Debugf(ctx, "workflow SMTP config: host=%q port=%q username=%q from=%q", host, port, username, from)
 
 	sni := host
 	if parts := strings.SplitN(host, ":", 2); len(parts) == 2 {

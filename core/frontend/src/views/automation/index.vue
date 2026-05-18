@@ -441,7 +441,7 @@ const runWorkflow = async (id: string) => {
     
     inputData.email = email;
     inputData.contact_email = email;
-    
+
     const result = await workflowApi.executeWorkflow(id, {
       trigger: 'manual',
       contact_email: email,
