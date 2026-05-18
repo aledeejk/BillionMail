@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/gogf/gf/v2/frame/g"
 )
@@ -80,33 +79,35 @@ func (s *AnalyticsService) GetNodeStats(ctx context.Context, workflowId int64) (
 }
 
 func (s *AnalyticsService) ExportExecutionLogCSV(ctx context.Context, workflowId int64, contact, status string) ([]byte, error) {
-	logs, _, err := s.GetExecutionLog(ctx, workflowId, contact, status)
+	items, err := GetWorkflowService().GetExecutionWalkthroughs(ctx, workflowId, WorkflowLogFilter{
+		Contact: contact,
+		Status:  status,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	var buffer bytes.Buffer
 	writer := csv.NewWriter(&buffer)
-	defer writer.Flush()
 
 	if err := writer.Write([]string{"Execution ID", "Contact Email", "Status", "Started At", "Finished At", "Nodes"}); err != nil {
 		return nil, err
 	}
-	for _, item := range logs {
+	for _, item := range items {
 		nodes := make([]string, 0, len(item.Nodes))
 		for _, node := range item.Nodes {
 			nodes = append(nodes, fmt.Sprintf("%s (%s) %s", node.NodeType, node.NodeId, node.Status))
 		}
-		finishedAt := ""
-		if !item.FinishedAt.IsZero() {
-			finishedAt = item.FinishedAt.Format(time.RFC3339)
+		contactEmail := item.ContactEmail
+		if contactEmail == "" {
+			contactEmail = item.ContactId
 		}
 		if err := writer.Write([]string{
 			item.ExecutionId,
-			item.ContactEmail,
+			contactEmail,
 			item.Status,
-			item.StartedAt.Format(time.RFC3339),
-			finishedAt,
+			item.StartedAt,
+			item.FinishedAt,
 			strings.Join(nodes, "; "),
 		}); err != nil {
 			return nil, err
